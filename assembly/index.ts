@@ -42,31 +42,18 @@ const verificationRequests = new PersistentVector<VerificationRequest>("f");
 const pendingRequests = new PersistentSet<u32>("g");
 const approvedRequests = new PersistentSet<u32>("k");
 
-// Tipping
-
-const totalTipsByItem = new PersistentUnorderedMap<string, u128>("h");
-const totalTipsByExternal = new PersistentUnorderedMap<ExternalAccount, u128>("i");
-const availableTipsByExternal = new PersistentUnorderedMap<ExternalAccount, u128>("j");
-
-const MAX_AMOUNT_PER_ITEM_KEY = "n";
-const MAX_AMOUNT_PER_TIP_KEY = "o";
-
 // INITIALIZATION
 
 export function initialize(
   ownerAccountId: NearAccount,
   oracleAccountId: NearAccount,
   minStakeAmount: u128,
-  maxAmountPerItem: u128,
-  maxAmountPerTip: u128
 ): void {
   assert(storage.getPrimitive<bool>(INIT_CONTRACT_KEY, false) == false, "Contract already initialized");
 
   storage.set<NearAccount>(OWNER_ACCOUNT_KEY, ownerAccountId);
   storage.set<NearAccount>(ORACLE_ACCOUNT_KEY, oracleAccountId);
   storage.set<u128>(MIN_STAKE_AMOUNT_KEY, minStakeAmount);
-  storage.set<u128>(MAX_AMOUNT_PER_ITEM_KEY, maxAmountPerItem);
-  storage.set<u128>(MAX_AMOUNT_PER_TIP_KEY, maxAmountPerTip);
   storage.set<bool>(INIT_CONTRACT_KEY, true);
   storage.set<bool>(ACTIVE_CONTRACT_KEY, true);
 
@@ -109,16 +96,6 @@ export function getMinStakeAmount(): u128 {
   return storage.get<u128>(MIN_STAKE_AMOUNT_KEY, u128.Zero)!;
 }
 
-export function getMaxAmountPerItem(): u128 {
-  _active();
-  return storage.get<u128>(MAX_AMOUNT_PER_ITEM_KEY, u128.Zero)!;
-}
-
-export function getMaxAmountPerTip(): u128 {
-  _active();
-  return storage.get<u128>(MAX_AMOUNT_PER_TIP_KEY, u128.Zero)!;
-}
-
 // Requests
 
 export function getPendingRequests(): u32[] {
@@ -143,28 +120,6 @@ export function getRequestStatus(id: u32): u8 {
   } else {
     return u8(3); // rejected
   }
-}
-
-// Tipping
-
-export function getTotalTipsByItemId(itemId: string): u128 {
-  _active();
-  return totalTipsByItem.get(itemId, u128.Zero)!;
-}
-
-export function getTotalTipsByExternalAccount(externalAccount: ExternalAccount): u128 {
-  _active();
-  return totalTipsByExternal.get(externalAccount, u128.Zero)!;
-}
-
-export function getAvailableTipsByExternalAccount(externalAccount: ExternalAccount): u128 {
-  _active();
-  return availableTipsByExternal.get(externalAccount, u128.Zero)!;
-}
-
-export function calculateFee(donationAmount: u128): u128 {
-  _active();
-  return u128.muldiv(donationAmount, u128.from(3), u128.from(100)); // 3%
 }
 
 // WRITE
@@ -221,20 +176,6 @@ export function changeMinStake(minStakeAmount: u128): void {
   logging.log("Changed min stake: " + minStakeAmount.toString());
 }
 
-export function changeMaxAmountPerItem(maxAmountPerItem: u128): void {
-  _active();
-  _onlyOwner();
-  storage.set<u128>(MAX_AMOUNT_PER_ITEM_KEY, maxAmountPerItem);
-  logging.log("Changed max amount of item tips: " + maxAmountPerItem.toString());
-}
-
-export function changeMaxAmountPerTip(maxAmountPerTip: u128): void {
-  _active();
-  _onlyOwner();
-  storage.set<u128>(MAX_AMOUNT_PER_TIP_KEY, maxAmountPerTip);
-  logging.log("Changed max amount of one tip: " + maxAmountPerTip.toString());
-}
-
 export function unlinkAll(): void {
   _active();
   _onlyOwner();
@@ -277,85 +218,6 @@ export function requestVerification(externalAccount: ExternalAccount, isUnlink: 
   );
 
   return id;
-}
-
-// Tipping
-
-export function sendTips(recipientExternalAccount: ExternalAccount, itemId: string): void {
-  _active();
-
-  assert(u128.gt(Context.attachedDeposit, u128.Zero), "Tips amounts must be greater than zero");
-  assert(
-    u128.le(
-      u128.add(totalTipsByItem.get(itemId, u128.Zero)!, Context.attachedDeposit),
-      storage.get<u128>(MAX_AMOUNT_PER_ITEM_KEY, u128.Zero)!
-    ),
-    "New total tips amount exceeds allowance"
-  );
-
-  const donationAmount = u128.muldiv(Context.attachedDeposit, u128.from(100), u128.from(103));
-  const feeAmount = u128.sub(Context.attachedDeposit, donationAmount);
-
-  assert(
-    u128.le(donationAmount, storage.get<u128>(MAX_AMOUNT_PER_TIP_KEY, u128.Zero)!),
-    "Tips amount exceeds allowance"
-  );
-  assert(!u128.eq(feeAmount, u128.Zero), "Donation cannot be free");
-
-  const nearAccount = nearByExternal.get(recipientExternalAccount);
-
-  if (nearAccount) {
-    ContractPromiseBatch.create(nearAccount).transfer(donationAmount);
-    logging.log(
-      Context.sender +
-        " tips " +
-        donationAmount.toString() +
-        " NEAR to " +
-        recipientExternalAccount +
-        " <=> " +
-        nearAccount
-    );
-  } else {
-    const availableTips = availableTipsByExternal.get(recipientExternalAccount, u128.Zero)!;
-    const newAvailableTips = u128.add(availableTips, donationAmount);
-    availableTipsByExternal.set(recipientExternalAccount, newAvailableTips);
-    logging.log(Context.sender + " tips " + donationAmount.toString() + " NEAR to " + recipientExternalAccount);
-  }
-
-  // update item stat
-  const oldTotalTipsByItem = totalTipsByItem.get(itemId, u128.Zero)!;
-  const newTotalTipsByItem = u128.add(oldTotalTipsByItem, donationAmount);
-  totalTipsByItem.set(itemId, newTotalTipsByItem);
-
-  // update user stat
-  const oldTotalTipsByExternal = totalTipsByExternal.get(recipientExternalAccount, u128.Zero)!;
-  const newTotalTipsByExternal = u128.add(oldTotalTipsByExternal, donationAmount);
-  totalTipsByExternal.set(recipientExternalAccount, newTotalTipsByExternal);
-
-  // transfer donation fee to owner
-  const owner = storage.get<NearAccount>(OWNER_ACCOUNT_KEY)!;
-  ContractPromiseBatch.create(owner).transfer(feeAmount);
-}
-
-export function claimTokens(): void {
-  _active();
-
-  const externalAccount = externalByNear.get(Context.sender);
-  assert(externalAccount != null, "You don't have any linked account.");
-
-  const availableTips = availableTipsByExternal.get(externalAccount!, u128.Zero)!;
-  assert(u128.gt(availableTips, u128.Zero), "No tips to withdraw.");
-
-  ContractPromiseBatch.create(Context.sender).transfer(availableTips);
-  availableTipsByExternal.set(externalAccount!, u128.Zero);
-
-  logging.log(Context.sender + " claimed " + availableTips.toString() + " NEAR from " + externalAccount!);
-}
-
-export function shutdown(): void {
-  _onlyOwner();
-  storage.set<bool>(ACTIVE_CONTRACT_KEY, false);
-  logging.log("Shutdown occured");
 }
 
 // HELPERS
