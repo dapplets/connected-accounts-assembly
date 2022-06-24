@@ -1,17 +1,19 @@
 import { expect } from '@jest/globals';
 import 'regenerator-runtime/runtime';
 
+jest.setTimeout(30000);
+
 let near;
 let contract;
-let accountId;
+let nearAccountId;
+const nearOriginId = 'near/goerli';
 
 beforeAll(async function () {
     near = await nearlib.connect(nearConfig);
-    accountId = nearConfig.contractName;
+    nearAccountId = nearConfig.contractName;
     contract = await near.loadContract(nearConfig.contractName, {
         viewMethods: [
-            'getExternalAccount',
-            'getNearAccount',
+            'getConnectedAccounts',
             'getMinStakeAmount',
             'getOracleAccount',
             'getOwnerAccount',
@@ -28,22 +30,18 @@ beforeAll(async function () {
             'changeMinStake',
             'requestVerification'
         ],
-        sender: accountId,
+        sender: nearAccountId,
     });
 });
 
 test('initialize contract', async () => {
     const STAKE = "1000000000000000000000"; // 0.001 NEAR
-    const AMOUNT_1 = "100000000000000000000000000"; // 100 NEAR
-    const AMOUNT_2 = "1000000000000000000000000"; // 1 NEAR
 
     await contract.initialize({
         args: {
-            ownerAccountId: accountId,
-            oracleAccountId: accountId,
+            ownerAccountId: nearAccountId,
+            oracleAccountId: nearAccountId,
             minStakeAmount: STAKE,
-            maxAmountPerItem: AMOUNT_1,
-            maxAmountPerTip: AMOUNT_2
         }
     })
 
@@ -51,24 +49,31 @@ test('initialize contract', async () => {
     const oracleAccountId = await contract.getOracleAccount();
     const minStakeAmount = await contract.getMinStakeAmount();
 
-    expect(ownerAccountId).toMatch(accountId);
-    expect(oracleAccountId).toMatch(accountId);
+    expect(ownerAccountId).toMatch(nearAccountId);
+    expect(oracleAccountId).toMatch(nearAccountId);
     expect(minStakeAmount).toMatch(STAKE);
 });
 
-const EXTERNAL_ACCOUNT_1 = 'social_network/username';
+const ACCOUNT_1 = {
+    id: 'username',
+    originId: 'social_network'
+};
 
 test('linked accounts must be empty', async () => {
-    const externalAccount = await contract.getExternalAccount({
-        nearAccount: accountId
+    const connectedAccountsToNearAccount = await contract.getConnectedAccounts({
+        accountId: nearAccountId,
+        originId: nearOriginId,
+        closeness: 1
     });
 
-    const nearAccount = await contract.getNearAccount({
-        externalAccount: EXTERNAL_ACCOUNT_1
+    const connectedAccountsToAnotherAccount = await contract.getConnectedAccounts({
+        accountId: ACCOUNT_1.id,
+        originId: ACCOUNT_1.originId,
+        closeness: 1
     });
 
-    expect(externalAccount).toBeNull();
-    expect(nearAccount).toBeNull();
+    expect(connectedAccountsToNearAccount).toBeNull();
+    expect(connectedAccountsToAnotherAccount).toBeNull();
 });
 
 test('pending requests must be empty', async () => {
@@ -82,7 +87,8 @@ test('pending requests must be empty', async () => {
 test('creates request', async () => {
     const id = await contract.requestVerification({
         args: { 
-            externalAccount: EXTERNAL_ACCOUNT_1, 
+            accountId: ACCOUNT_1.id,
+            originId: ACCOUNT_1.originId,
             isUnlink: false,
             url: "https://example.com"
         },
@@ -94,9 +100,61 @@ test('creates request', async () => {
 
     const request = await contract.getVerificationRequest({ id: id });
     expect(request).toMatchObject({
-        nearAccount: accountId,
-        externalAccount: EXTERNAL_ACCOUNT_1,
+        firstAccount: nearAccountId + '/' + nearOriginId,
+        secondAccount: ACCOUNT_1.id + '/' + ACCOUNT_1.originId,
         isUnlink: false,
         proofUrl: "https://example.com"
     });
+});
+
+test('approve the linking request, get the request approve and connect accounts', async () => {
+    const pendingRequests = await contract.getPendingRequests();
+    const requestId = pendingRequests[0];
+    await contract.approveRequest({ args: { requestId } });
+
+    const connectedAccountsToNearAccount = await contract.getConnectedAccounts({
+        accountId: nearAccountId,
+        originId: nearOriginId,
+        closeness: 1
+    });
+
+    const connectedAccountsToAnotherAccount = await contract.getConnectedAccounts({
+        accountId: ACCOUNT_1.id,
+        originId: ACCOUNT_1.originId,
+        closeness: 1
+    });
+
+    expect(connectedAccountsToNearAccount).toMatchObject([ACCOUNT_1.id + '/' + ACCOUNT_1.originId]);
+    expect(connectedAccountsToAnotherAccount).toMatchObject([nearAccountId + '/' + nearOriginId]);
+});
+
+test('approve the unlinking request, get the request approve and connect accounts', async () => {
+    const id = await contract.requestVerification({
+        args: { 
+            accountId: ACCOUNT_1.id,
+            originId: ACCOUNT_1.originId,
+            isUnlink: true,
+            url: "https://example.com"
+        },
+        amount: "1000000000000000000000"
+    });
+
+    const pendingRequests = await contract.getPendingRequests();
+    const requestId = pendingRequests[0];
+    await contract.approveRequest({ args: { requestId } });
+
+    const connectedAccountsToNearAccount = await contract.getConnectedAccounts({
+        accountId: nearAccountId,
+        originId: nearOriginId,
+        closeness: 1
+    });
+
+    const connectedAccountsToAnotherAccount = await contract.getConnectedAccounts({
+        accountId: ACCOUNT_1.id,
+        originId: ACCOUNT_1.originId,
+        closeness: 1
+    });
+
+    expect(connectedAccountsToNearAccount).toMatchObject([]);
+    expect(connectedAccountsToAnotherAccount).toMatchObject([]);
 });

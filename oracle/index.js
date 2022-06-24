@@ -24,7 +24,7 @@ async function start() {
         account,
         process.env.CONTRACT_ACCOUNT_ID,
         {
-            viewMethods: ["getExternalAccount", "getNearAccount", "getOracleAccount", "getPendingRequests", "getVerificationRequest"],
+            viewMethods: ["getConnectedAccounts", "getOracleAccount", "getPendingRequests", "getVerificationRequest"],
             changeMethods: ["approveRequest", "rejectRequest"],
             sender: account
         }
