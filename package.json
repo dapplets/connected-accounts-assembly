@@ -14,14 +14,14 @@
     "deploy": "npm run build && near deploy"
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.14.0",
     "env-cmd": "~10.1.0",
     "jest": "~27.3.1",
     "jest-environment-node": "~27.3.1",
     "near-cli": "~2.2.0",
     "near-sdk-as": "3.2.3",
     "regenerator-runtime": "~0.13.9",
-    "shelljs": "^0.8.4",
-    "@babel/preset-env": "^7.14.0"
+    "shelljs": "^0.8.4"
   },
   "jest": {
     "testEnvironment": "near-cli/test_environment",
@@ -29,5 +29,9 @@
       "<rootDir>/contract/",
       "<rootDir>/node_modules/"
     ]
+  },
+  "dependencies": {
+    "bn.js": "^5.2.1",
+    "near-api-js": "^0.45.1"
   }
 }
