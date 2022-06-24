@@ -10,7 +10,7 @@ import {
 } from "near-sdk-core";
 
 // !!! NETWORK TYPE !!!
-const NEAR_NETWORK = 'goerli';
+const NEAR_NETWORK = 'testnet';
 
 type NearAccount = string; // example: user.near, user.testnet
 
