@@ -9,8 +9,24 @@ import {
   PersistentVector,
 } from "near-sdk-core";
 
+// !!! NETWORK TYPE !!!
+const NEAR_NETWORK = 'goerli';
+
 type NearAccount = string; // example: user.near, user.testnet
-type ExternalAccount = string; // example: twitter/user
+
+//  *****
+//  SCHEME: accountId + / + origin or chain + / + network
+//  Examples:
+//  * user.near/near/mainnet
+//  * user.testnet/near/testnet
+//  * twitter_user/twitter
+//  * ins_account/instagram
+//  * google_account/google
+//  * 0xF64929376812667BDa7D962661229f8b8dd90687/ethereum/goerli
+//  * buidl.eth/ethereum/mainnet
+//  *****
+type Account = string;
+
 
 //// MODELS
 
@@ -21,8 +37,11 @@ const ACTIVE_CONTRACT_KEY = "m";
 
 // Identity
 
-const externalByNear = new PersistentUnorderedMap<NearAccount, ExternalAccount>("b");
-const nearByExternal = new PersistentUnorderedMap<ExternalAccount, NearAccount>("c");
+//  *****
+//  accounts: account ----> linked accounts, closeness=1
+//  *****
+const accounts = new PersistentUnorderedMap<string, PersistentSet<string>>("b"); 
+
 const ORACLE_ACCOUNT_KEY = "d";
 const MIN_STAKE_AMOUNT_KEY = "e";
 
@@ -31,8 +50,8 @@ const MIN_STAKE_AMOUNT_KEY = "e";
 @nearBindgen
 export class VerificationRequest {
   constructor(
-    public nearAccount: NearAccount,
-    public externalAccount: ExternalAccount,
+    public firstAccount: Account,
+    public secondAccount: Account,
     public isUnlink: boolean,
     public proofUrl: string
   ) {}
@@ -71,14 +90,29 @@ export function initialize(
 
 // Identity
 
-export function getExternalAccount(nearAccount: NearAccount): ExternalAccount | null {
+export function getConnectedAccounts(
+  accountId: string,
+  originId: string,
+  closeness: u8
+): string[] | null {
   _active();
-  return externalByNear.get(nearAccount);
-}
-
-export function getNearAccount(externalAccount: ExternalAccount): NearAccount | null {
-  _active();
-  return nearByExternal.get(externalAccount);
+  if (closeness === 1) {
+    const a = accounts.get(accountId + '/' + originId);
+    if (a) {
+      const b = a.values();
+      return b;
+    } else {
+      return null;
+    }
+  } else {
+    const a = accounts.get(accountId + '/' + originId);
+    if (a) {
+      const b = a.values();
+      return b;
+    } else {
+      return null;
+    }
+  }
 }
 
 export function getOwnerAccount(): NearAccount | null {
@@ -134,13 +168,44 @@ export function approveRequest(requestId: u32): void {
   const req = verificationRequests[requestId];
 
   if (req.isUnlink) {
-    externalByNear.delete(req.nearAccount);
-    nearByExternal.delete(req.externalAccount);
-    logging.log("Accounts " + req.nearAccount + " and " + req.externalAccount + " are unlinked");
+    assert(accounts.contains(req.firstAccount), "Account " + req.firstAccount + " not found.");
+    const connected1Accounts = accounts.get(req.firstAccount);
+    assert(connected1Accounts!.has(req.secondAccount), "Account " + req.secondAccount + " was not connected to " + req.firstAccount);
+    connected1Accounts!.delete(req.secondAccount);
+
+    assert(accounts.contains(req.secondAccount), "Account " + req.secondAccount + " not found.");
+    const connected2Accounts = accounts.get(req.secondAccount);
+    assert(connected2Accounts!.has(req.firstAccount), "Account " + req.firstAccount + " was not connected to " + req.secondAccount);
+    connected2Accounts!.delete(req.firstAccount);
+
+    accounts.set(req.firstAccount, connected1Accounts!);
+    accounts.set(req.secondAccount, connected2Accounts!);
+
+    logging.log("Accounts " + req.firstAccount + " and " + req.secondAccount + " are unlinked");
   } else {
-    externalByNear.set(req.nearAccount, req.externalAccount);
-    nearByExternal.set(req.externalAccount, req.nearAccount);
-    logging.log("Accounts " + req.nearAccount + " and " + req.externalAccount + " are linked");
+    const connected1Accounts = accounts.get(req.firstAccount);
+    if (!connected1Accounts) {
+      const newConnected1Accounts = new PersistentSet<string>('q');
+      newConnected1Accounts.add(req.secondAccount);
+      accounts.set(req.firstAccount, newConnected1Accounts);
+    } else {
+      assert(!connected1Accounts.has(req.secondAccount), "Account " + req.secondAccount + " has already connected to " + req.firstAccount);
+      connected1Accounts.add(req.secondAccount);
+      accounts.set(req.firstAccount, connected1Accounts);
+    }
+
+    const connected2Accounts = accounts.get(req.secondAccount);
+    if (!connected2Accounts) {
+      const newConnected2Accounts = new PersistentSet<string>('w');
+      newConnected2Accounts.add(req.firstAccount);
+      accounts.set(req.secondAccount, newConnected2Accounts);
+    } else {
+      assert(!connected2Accounts.has(req.firstAccount), "Account " + req.firstAccount + " has already connected to " + req.secondAccount);
+      connected2Accounts.add(req.firstAccount);
+      accounts.set(req.secondAccount, connected2Accounts);
+    }
+
+    logging.log("Accounts " + req.firstAccount + " and " + req.secondAccount + " are linked");
   }
 
   pendingRequests.delete(requestId);
@@ -179,13 +244,17 @@ export function changeMinStake(minStakeAmount: u128): void {
 export function unlinkAll(): void {
   _active();
   _onlyOwner();
-  externalByNear.clear();
-  nearByExternal.clear();
+  accounts.clear();
 }
 
 // Requests
 
-export function requestVerification(externalAccount: ExternalAccount, isUnlink: boolean, url: string): u32 {
+export function requestVerification(
+  accountId: string,
+  originId: string,
+  isUnlink: boolean,
+  url: string
+): u32 {
   _active();
 
   assert(Context.sender == Context.predecessor, "Cross-contract calls is not allowed");
@@ -194,27 +263,44 @@ export function requestVerification(externalAccount: ExternalAccount, isUnlink: 
     "Insufficient stake amount"
   );
 
+  const firstAccount = accountId + '/' + originId;
+  const senderOrigin = 'near' + '/' + NEAR_NETWORK
+  const secondAccount = Context.sender + '/' + senderOrigin;
+
   // ToDo: audit it
   if (isUnlink) {
-    assert(externalByNear.contains(Context.sender), "The NEAR account doesn't have a linked account");
-    assert(nearByExternal.contains(externalAccount), "The external account doesn't have a linked account");
+    assert(accounts.contains(firstAccount), "Account " + accountId + " doesn't have linked accounts.");
+    const connected1Accounts = accounts.get(firstAccount);
+    assert(connected1Accounts!.has(secondAccount), "Account " + Context.sender + " was not connected to " + accountId);
 
-    // ToDo: 
-    // assert(nearByExternal.get(externalAccount) == Context.sender, "");
-    // assert(nearByExternal.get(Context.sender) == externalAccount, "");
+    assert(accounts.contains(secondAccount), "Account " + Context.sender + " doesn't have linked accounts.");
+    const connected2Accounts = accounts.get(secondAccount);
+    assert(connected2Accounts!.has(firstAccount), "Account " + accountId + " was not connected to " + Context.sender);
   } else {
-    assert(!externalByNear.contains(Context.sender), "The NEAR account already has a linked account");
-    assert(!nearByExternal.contains(externalAccount), "The external account already has a linked account");
+    const connected1Accounts = accounts.get(firstAccount);
+    if (connected1Accounts) {
+      assert(!connected1Accounts.has(secondAccount), "Account " + accountId + " has already connected to " + Context.sender);
+    }
+
+    const connected2Accounts = accounts.get(secondAccount);
+    if (connected2Accounts) {
+      assert(!connected2Accounts.has(firstAccount), "Account " + Context.sender + " has already connected to " + accountId);
+    }
   }
 
-  const id = verificationRequests.push(new VerificationRequest(Context.sender, externalAccount, isUnlink, url));
+  const id = verificationRequests.push(new VerificationRequest(
+    secondAccount,
+    firstAccount,
+    isUnlink,
+    url
+  ));
   pendingRequests.add(id);
 
   const oracleAccount = storage.get<NearAccount>(ORACLE_ACCOUNT_KEY)!;
   ContractPromiseBatch.create(oracleAccount).transfer(Context.attachedDeposit);
 
   logging.log(
-    Context.sender + " requests to link " + externalAccount + " account. Proof ID: " + id.toString() + " URL: " + url
+    Context.sender + " requests to link " + accountId + " account. Proof ID: " + id.toString() + " URL: " + url
   );
 
   return id;
