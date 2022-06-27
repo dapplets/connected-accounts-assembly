@@ -212,7 +212,7 @@ test('approve the linking request, get the request approve and connect accounts'
     expect(connectedAccountsToAnotherAccount).toMatchObject([nearAliceId + '/' + nearOriginId]);
 });
 
-test('approve the unlinking request, get the request approve and connect accounts', async () => {
+test('approve the unlinking request, get the request approve and unconnect accounts', async () => {
     const id = await aliceUseContract.requestVerification({
         args: { 
             accountId: ACCOUNT_1.id,
@@ -241,4 +241,57 @@ test('approve the unlinking request, get the request approve and connect account
 
     expect(connectedAccountsToNearAccount).toMatchObject([]);
     expect(connectedAccountsToAnotherAccount).toMatchObject([]);
+});
+
+test('approve two linking requests, get the requests approves and connect accounts', async () => {
+    await aliceUseContract.requestVerification({
+        args: { 
+            accountId: ACCOUNT_1.id,
+            originId: ACCOUNT_1.originId,
+            isUnlink: false,
+            url: "https://example.com"
+        },
+        amount: "1000000000000000000000"
+    });
+
+    await bobUseContract.requestVerification({
+        args: { 
+            accountId: ACCOUNT_1.id,
+            originId: ACCOUNT_1.originId,
+            isUnlink: false,
+            url: "https://example.com"
+        },
+        amount: "1000000000000000000000"
+    });
+
+    const pendingRequests = await aliceUseContract.getPendingRequests();
+    expect(pendingRequests.length).toBe(2);
+
+    const aliceRequestId = pendingRequests[0];
+    await aliceUseContract.approveRequest({ args: { requestId: aliceRequestId } });
+
+    const bobRequestId = pendingRequests[1];
+    await aliceUseContract.approveRequest({ args: { requestId: bobRequestId } });
+
+    const connectedAccountsToAliseAccount = await aliceUseContract.getConnectedAccounts({
+        accountId: nearAliceId,
+        originId: nearOriginId,
+        closeness: 1
+    });
+
+    const connectedAccountsToBobAccount = await bobUseContract.getConnectedAccounts({
+        accountId: nearBobId,
+        originId: nearOriginId,
+        closeness: 1
+    });
+
+    const connectedAccountsToAnotherAccount = await aliceUseContract.getConnectedAccounts({
+        accountId: ACCOUNT_1.id,
+        originId: ACCOUNT_1.originId,
+        closeness: 1
+    });
+
+    expect(connectedAccountsToAliseAccount).toMatchObject([ACCOUNT_1.id + '/' + ACCOUNT_1.originId]);
+    expect(connectedAccountsToBobAccount).toMatchObject([ACCOUNT_1.id + '/' + ACCOUNT_1.originId]);
+    expect(connectedAccountsToAnotherAccount).toMatchObject([nearAliceId + '/' + nearOriginId, nearBobId + '/' + nearOriginId]);
 });
