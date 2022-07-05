@@ -9,12 +9,19 @@ import {
   PersistentVector,
 } from "near-sdk-core";
 
+import {
+  Account,
+  AccountGlobalId,
+  AccountState,
+  VerificationRequest
+} from './modules';
+
 // !!! NETWORK TYPE !!!
 const NEAR_NETWORK = 'testnet';
 
-type NearAccount = string; // example: user.near, user.testnet
+type NearAccountId = string; // example: user.near, user.testnet
 
-//  *****
+//  ***** AccountInfoForOracle *****
 //  SCHEME: accountId + / + origin or chain + / + network
 //  Examples:
 //  * user.near/near/mainnet
@@ -25,53 +32,43 @@ type NearAccount = string; // example: user.near, user.testnet
 //  * 0xF64929376812667BDa7D962661229f8b8dd90687/ethereum/goerli
 //  * buidl.eth/ethereum/mainnet
 //  *****
-type Account = string;
-
 
 //// MODELS
 
 // Common
 const OWNER_ACCOUNT_KEY = "a";
-const INIT_CONTRACT_KEY = "l";
-const ACTIVE_CONTRACT_KEY = "m";
+const INIT_CONTRACT_KEY = "b";
+const ACTIVE_CONTRACT_KEY = "c";
 
 // Identity
 
 //  *****
 //  accounts: account ----> linked accounts, closeness=1
 //  *****
-const accounts = new PersistentUnorderedMap<string, PersistentSet<string>>("b"); 
+const _connectedAccounts = new PersistentUnorderedMap<AccountGlobalId, PersistentSet<AccountGlobalId>>("d"); 
 
-const ORACLE_ACCOUNT_KEY = "d";
-const MIN_STAKE_AMOUNT_KEY = "e";
+const _statuses = new PersistentUnorderedMap<AccountGlobalId, AccountState>("e"); 
+
+const ORACLE_ACCOUNT_KEY = "f";
+const MIN_STAKE_AMOUNT_KEY = "g";
 
 // Requests
 
-@nearBindgen
-export class VerificationRequest {
-  constructor(
-    public firstAccount: Account,
-    public secondAccount: Account,
-    public isUnlink: boolean,
-    public proofUrl: string
-  ) {}
-}
-
-const verificationRequests = new PersistentVector<VerificationRequest>("f");
-const pendingRequests = new PersistentSet<u32>("g");
-const approvedRequests = new PersistentSet<u32>("k");
+const verificationRequests = new PersistentVector<VerificationRequest>("h");
+const pendingRequests = new PersistentSet<u32>("i");
+const approvedRequests = new PersistentSet<u32>("j");
 
 // INITIALIZATION
 
 export function initialize(
-  ownerAccountId: NearAccount,
-  oracleAccountId: NearAccount,
+  ownerAccountId: NearAccountId,
+  oracleAccountId: NearAccountId,
   minStakeAmount: u128,
 ): void {
   assert(storage.getPrimitive<bool>(INIT_CONTRACT_KEY, false) == false, "Contract already initialized");
 
-  storage.set<NearAccount>(OWNER_ACCOUNT_KEY, ownerAccountId);
-  storage.set<NearAccount>(ORACLE_ACCOUNT_KEY, oracleAccountId);
+  storage.set<NearAccountId>(OWNER_ACCOUNT_KEY, ownerAccountId);
+  storage.set<NearAccountId>(ORACLE_ACCOUNT_KEY, oracleAccountId);
   storage.set<u128>(MIN_STAKE_AMOUNT_KEY, minStakeAmount);
   storage.set<bool>(INIT_CONTRACT_KEY, true);
   storage.set<bool>(ACTIVE_CONTRACT_KEY, true);
@@ -90,39 +87,66 @@ export function initialize(
 
 // Identity
 
+function _getStatus(id: AccountGlobalId): bool {
+  if (_statuses.contains(id)) {
+    const res = _statuses.get(id);
+    if (res) {
+      return res.isMain;
+    }
+  }
+  return false;
+}
+
+export function getStatus(accountId: string, originId: string): bool {
+  const accountGlobalId: AccountGlobalId = accountId + '/' + originId;
+  return _getStatus(accountGlobalId);
+}
+
 export function getConnectedAccounts(
   accountId: string,
   originId: string,
   closeness: u8
-): string[] | null {
+): Account[] | null {
   _active();
   if (closeness === 1) {
-    const a = accounts.get(accountId + '/' + originId);
+    const a = _connectedAccounts.get(accountId + '/' + originId);
     if (a) {
-      const b = a.values();
-      return b;
+      // return a.values();
+
+      const ids = a.values();
+      const accounts: Account[] = ids.map<Account>((id: AccountGlobalId) => new Account(id, new AccountState(_getStatus(id))));
+      return accounts;
+
+
     } else {
       return null;
     }
   } else {
-    const a = accounts.get(accountId + '/' + originId);
+
+    // TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    const a = _connectedAccounts.get(accountId + '/' + originId);
     if (a) {
-      const b = a.values();
-      return b;
+      // return a.values();
+
+      const ids = a.values();
+      const accounts: Account[] = ids.map<Account>((id: AccountGlobalId) => new Account(id, new AccountState(_getStatus(id))));
+      return accounts;
+
+
     } else {
       return null;
     }
   }
 }
 
-export function getOwnerAccount(): NearAccount | null {
+export function getOwnerAccount(): NearAccountId | null {
   _active();
-  return storage.get<NearAccount>(OWNER_ACCOUNT_KEY);
+  return storage.get<NearAccountId>(OWNER_ACCOUNT_KEY);
 }
 
-export function getOracleAccount(): NearAccount | null {
+export function getOracleAccount(): NearAccountId | null {
   _active();
-  return storage.get<NearAccount>(ORACLE_ACCOUNT_KEY);
+  return storage.get<NearAccountId>(ORACLE_ACCOUNT_KEY);
 }
 
 export function getMinStakeAmount(): u128 {
@@ -160,6 +184,37 @@ export function getRequestStatus(id: u32): u8 {
 
 // Identity
 
+export function changeStatus(
+  accountId: string,
+  originId: string,
+  isMain: bool
+): void {
+  const requestGlobalId = accountId + '/' + originId;
+  const senderGlobalId = Context.sender + '/' + 'near' + '/' + NEAR_NETWORK;
+  assert(_getStatus(requestGlobalId) !== isMain, 'The new state is equal to the previous one');
+  if (requestGlobalId != senderGlobalId) {
+    assert(_connectedAccounts.contains(senderGlobalId), 'Only owner can change status');
+    const connectedAccountsGIds = _connectedAccounts.get(senderGlobalId);
+    assert(connectedAccountsGIds && connectedAccountsGIds.has(requestGlobalId), 'Only owner can change status');
+  }
+  if (isMain) {
+    if (_connectedAccounts.contains(senderGlobalId)) {
+      const connectedAccountsGIds = _connectedAccounts.get(senderGlobalId);
+      if (connectedAccountsGIds) {
+        const ids = connectedAccountsGIds.values();
+        ids.push(senderGlobalId);
+        ids.forEach((id: string) => {
+          const a = _statuses.get(id);
+          if (a && a.isMain) {
+            _statuses.set(id, new AccountState(false));
+          }
+        });
+      }
+    }
+  }
+  _statuses.set(requestGlobalId, new AccountState(isMain));
+}
+
 export function approveRequest(requestId: u32): void {
   _active();
   _onlyOracle();
@@ -168,41 +223,41 @@ export function approveRequest(requestId: u32): void {
   const req = verificationRequests[requestId];
 
   if (req.isUnlink) {
-    assert(accounts.contains(req.firstAccount), "Account " + req.firstAccount + " not found.");
-    const connected1Accounts = accounts.get(req.firstAccount);
+    assert(_connectedAccounts.contains(req.firstAccount), "Account " + req.firstAccount + " not found.");
+    const connected1Accounts = _connectedAccounts.get(req.firstAccount);
     assert(connected1Accounts!.has(req.secondAccount), "Account " + req.secondAccount + " was not connected to " + req.firstAccount);
     connected1Accounts!.delete(req.secondAccount);
 
-    assert(accounts.contains(req.secondAccount), "Account " + req.secondAccount + " not found.");
-    const connected2Accounts = accounts.get(req.secondAccount);
+    assert(_connectedAccounts.contains(req.secondAccount), "Account " + req.secondAccount + " not found.");
+    const connected2Accounts = _connectedAccounts.get(req.secondAccount);
     assert(connected2Accounts!.has(req.firstAccount), "Account " + req.firstAccount + " was not connected to " + req.secondAccount);
     connected2Accounts!.delete(req.firstAccount);
 
-    accounts.set(req.firstAccount, connected1Accounts!);
-    accounts.set(req.secondAccount, connected2Accounts!);
+    _connectedAccounts.set(req.firstAccount, connected1Accounts!);
+    _connectedAccounts.set(req.secondAccount, connected2Accounts!);
 
     logging.log("Accounts " + req.firstAccount + " and " + req.secondAccount + " are unlinked");
   } else {
-    const connected1Accounts = accounts.get(req.firstAccount);
+    const connected1Accounts = _connectedAccounts.get(req.firstAccount);
     if (!connected1Accounts) {
       const newConnected1Accounts = new PersistentSet<string>('q');
       newConnected1Accounts.add(req.secondAccount);
-      accounts.set(req.firstAccount, newConnected1Accounts);
+      _connectedAccounts.set(req.firstAccount, newConnected1Accounts);
     } else {
       assert(!connected1Accounts.has(req.secondAccount), "Account " + req.secondAccount + " has already connected to " + req.firstAccount);
       connected1Accounts.add(req.secondAccount);
-      accounts.set(req.firstAccount, connected1Accounts);
+      _connectedAccounts.set(req.firstAccount, connected1Accounts);
     }
 
-    const connected2Accounts = accounts.get(req.secondAccount);
+    const connected2Accounts = _connectedAccounts.get(req.secondAccount);
     if (!connected2Accounts) {
       const newConnected2Accounts = new PersistentSet<string>('w');
       newConnected2Accounts.add(req.firstAccount);
-      accounts.set(req.secondAccount, newConnected2Accounts);
+      _connectedAccounts.set(req.secondAccount, newConnected2Accounts);
     } else {
       assert(!connected2Accounts.has(req.firstAccount), "Account " + req.firstAccount + " has already connected to " + req.secondAccount);
       connected2Accounts.add(req.firstAccount);
-      accounts.set(req.secondAccount, connected2Accounts);
+      _connectedAccounts.set(req.secondAccount, connected2Accounts);
     }
 
     logging.log("Accounts " + req.firstAccount + " and " + req.secondAccount + " are linked");
@@ -220,14 +275,14 @@ export function rejectRequest(requestId: u32): void {
   pendingRequests.delete(requestId);
 }
 
-export function changeOwnerAccount(newAccountId: NearAccount): void {
+export function changeOwnerAccount(newAccountId: NearAccountId): void {
   _active();
   _onlyOwner();
   storage.set(OWNER_ACCOUNT_KEY, newAccountId);
   logging.log("Changed owner: " + newAccountId);
 }
 
-export function changeOracleAccount(newAccountId: NearAccount): void {
+export function changeOracleAccount(newAccountId: NearAccountId): void {
   _active();
   _onlyOwner();
   storage.set(ORACLE_ACCOUNT_KEY, newAccountId);
@@ -244,7 +299,7 @@ export function changeMinStake(minStakeAmount: u128): void {
 export function unlinkAll(): void {
   _active();
   _onlyOwner();
-  accounts.clear();
+  _connectedAccounts.clear();
 }
 
 // Requests
@@ -263,40 +318,49 @@ export function requestVerification(
     "Insufficient stake amount"
   );
 
-  const firstAccount = accountId + '/' + originId;
   const senderOrigin = 'near' + '/' + NEAR_NETWORK
-  const secondAccount = Context.sender + '/' + senderOrigin;
+  const firstAccount = Context.sender + '/' + senderOrigin;
+
+  const secondAccount = accountId + '/' + originId;
+
+  if (!_statuses.contains(firstAccount)) {
+    _statuses.set(firstAccount, new AccountState());
+  }
+
+  if (!_statuses.contains(secondAccount)) {
+    _statuses.set(secondAccount, new AccountState());
+  }
 
   // ToDo: audit it
   if (isUnlink) {
-    assert(accounts.contains(firstAccount), "Account " + accountId + " doesn't have linked accounts.");
-    const connected1Accounts = accounts.get(firstAccount);
-    assert(connected1Accounts!.has(secondAccount), "Account " + Context.sender + " was not connected to " + accountId);
+    assert(_connectedAccounts.contains(secondAccount), "Account " + accountId + " doesn't have linked accounts.");
+    const connected1Accounts = _connectedAccounts.get(secondAccount);
+    assert(connected1Accounts!.has(firstAccount), "Account " + Context.sender + " was not connected to " + accountId);
 
-    assert(accounts.contains(secondAccount), "Account " + Context.sender + " doesn't have linked accounts.");
-    const connected2Accounts = accounts.get(secondAccount);
-    assert(connected2Accounts!.has(firstAccount), "Account " + accountId + " was not connected to " + Context.sender);
+    assert(_connectedAccounts.contains(firstAccount), "Account " + Context.sender + " doesn't have linked accounts.");
+    const connected2Accounts = _connectedAccounts.get(firstAccount);
+    assert(connected2Accounts!.has(secondAccount), "Account " + accountId + " was not connected to " + Context.sender);
   } else {
-    const connected1Accounts = accounts.get(firstAccount);
+    const connected1Accounts = _connectedAccounts.get(secondAccount);
     if (connected1Accounts) {
-      assert(!connected1Accounts.has(secondAccount), "Account " + accountId + " has already connected to " + Context.sender);
+      assert(!connected1Accounts.has(firstAccount), "Account " + accountId + " has already connected to " + Context.sender);
     }
 
-    const connected2Accounts = accounts.get(secondAccount);
+    const connected2Accounts = _connectedAccounts.get(firstAccount);
     if (connected2Accounts) {
-      assert(!connected2Accounts.has(firstAccount), "Account " + Context.sender + " has already connected to " + accountId);
+      assert(!connected2Accounts.has(secondAccount), "Account " + Context.sender + " has already connected to " + accountId);
     }
   }
 
   const id = verificationRequests.push(new VerificationRequest(
-    secondAccount,
     firstAccount,
+    secondAccount,
     isUnlink,
     url
   ));
   pendingRequests.add(id);
 
-  const oracleAccount = storage.get<NearAccount>(ORACLE_ACCOUNT_KEY)!;
+  const oracleAccount = storage.get<NearAccountId>(ORACLE_ACCOUNT_KEY)!;
   ContractPromiseBatch.create(oracleAccount).transfer(Context.attachedDeposit);
 
   logging.log(
@@ -309,11 +373,11 @@ export function requestVerification(
 // HELPERS
 
 function _onlyOracle(): void {
-  assert(storage.get<NearAccount>(ORACLE_ACCOUNT_KEY) == Context.sender, "Only oracle account can write");
+  assert(storage.get<NearAccountId>(ORACLE_ACCOUNT_KEY) == Context.sender, "Only oracle account can write");
 }
 
 function _onlyOwner(): void {
-  assert(storage.get<NearAccount>(OWNER_ACCOUNT_KEY) == Context.sender, "Only owner account can write");
+  assert(storage.get<NearAccountId>(OWNER_ACCOUNT_KEY) == Context.sender, "Only owner account can write");
 }
 
 function _active(): void {
