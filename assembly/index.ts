@@ -43,7 +43,7 @@ const ACTIVE_CONTRACT_KEY = "c";
 // Identity
 
 //  *****
-//  accounts: account ----> linked accounts, closeness=1
+//  _connectedAccounts: AccountGlobalId ----> linked AccountGlobalIds, closeness=1
 //  *****
 const _connectedAccounts = new PersistentUnorderedMap<AccountGlobalId, PersistentSet<AccountGlobalId>>("d"); 
 
@@ -102,40 +102,67 @@ export function getStatus(accountId: string, originId: string): bool {
   return _getStatus(accountGlobalId);
 }
 
+function getAccounts(globalId: AccountGlobalId): Account[] {
+  const connectedIds = _connectedAccounts.get(globalId);
+  if (connectedIds) {
+    const ids = connectedIds.values();
+    const accounts: Account[] = ids.map<Account>((id: AccountGlobalId) => new Account(id, new AccountState(_getStatus(id))));
+    return accounts;
+  } else {
+    const res: Account[] = [];
+    return res;
+  }
+}
+
+function getAccountsDeep(
+  closeness: i8,
+  globalIds: AccountGlobalId[],
+  allAccountIdsPlain: AccountGlobalId[],
+  allAccountsLayers: Account[][] = []
+): Account[][] {
+  const currentLayerAccounts: Account[][] = [];
+  for (let i = 0; i < globalIds.length; i++) {
+    const acc = getAccounts(globalIds[i]);
+    if (acc) {
+      const uniqueIds: AccountGlobalId[] = [];
+      const uniqueAccounts: Account[] = [];
+      for (let j = 0; j < acc.length; j++) {
+        if (!allAccountIdsPlain.includes(acc[j].id)) {
+          uniqueIds.push(acc[j].id);
+          allAccountIdsPlain.push(acc[j].id);
+          uniqueAccounts.push(acc[j]);
+        }
+      }
+      if (uniqueIds.length !== 0) {
+        currentLayerAccounts.push(uniqueAccounts);
+      }
+    }
+  }
+  if (currentLayerAccounts.length !== 0) {
+    const accounts = currentLayerAccounts.flat();
+    allAccountsLayers.push(accounts);
+    const accountsIds = accounts.map<AccountGlobalId>((ac) => ac.id);
+    if (closeness - 1 === 0) {
+      return allAccountsLayers;
+    } else {
+      return getAccountsDeep(closeness - 1, accountsIds, allAccountIdsPlain, allAccountsLayers);
+    }
+  } else {
+    return allAccountsLayers;
+  }
+}
+
 export function getConnectedAccounts(
   accountId: string,
   originId: string,
-  closeness: u8
-): Account[] | null {
+  closeness: i8 = -1
+): Account[][] | null {
   _active();
+  const accountGlobalId = accountId + '/' + originId;
   if (closeness === 1) {
-    const a = _connectedAccounts.get(accountId + '/' + originId);
-    if (a) {
-      // return a.values();
-
-      const ids = a.values();
-      const accounts: Account[] = ids.map<Account>((id: AccountGlobalId) => new Account(id, new AccountState(_getStatus(id))));
-      return accounts;
-
-
-    } else {
-      return null;
-    }
+    return [getAccounts(accountGlobalId)];
   } else {
-
-    // TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    const a = _connectedAccounts.get(accountId + '/' + originId);
-    if (a) {
-      // return a.values();
-
-      const ids = a.values();
-      const accounts: Account[] = ids.map<Account>((id: AccountGlobalId) => new Account(id, new AccountState(_getStatus(id))));
-      return accounts;
-
-
-    } else {
-      return null;
-    }
+    return getAccountsDeep(closeness, [accountGlobalId], [accountGlobalId]);
   }
 }
 
