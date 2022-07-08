@@ -1,4 +1,16 @@
-export type AccountGlobalId = string; // accountId + '/' + origin
+//  ***** AccountGlobalId *****
+//  SCHEME: accountId + / + (origin or (chain + / + network))
+//  Examples:
+//  * user.near/near/mainnet
+//  * user.testnet/near/testnet
+//  * twitter_user/twitter
+//  * ins_account/instagram
+//  * google_account/google
+//  * 0xF64929376812667BDa7D962661229f8b8dd90687/ethereum/goerli
+//  * buidl.eth/ethereum/mainnet
+//  ***************************
+
+export type AccountGlobalId = string;
 
 @nearBindgen
 export class AccountState {
@@ -21,6 +33,8 @@ export class VerificationRequest {
     public firstAccount: AccountGlobalId,
     public secondAccount: AccountGlobalId,
     public isUnlink: boolean,
-    public proofUrl: string,
+    public firstProofUrl: string,
+    public secondProofUrl: string,
+    public transactionSender: AccountGlobalId,
   ) {}
 }

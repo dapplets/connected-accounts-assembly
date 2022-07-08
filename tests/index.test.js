@@ -172,11 +172,13 @@ test('pending requests must be empty', async () => {
 
 test('creates request', async () => {
     const id = await aliceUseContract.requestVerification({
-        args: { 
-            accountId: ACCOUNT_1.id,
-            originId: ACCOUNT_1.originId,
+        args: {
+            firstAccountId: ACCOUNT_1.id,
+            firstOriginId: ACCOUNT_1.originId,
+            secondAccountId: nearAliceId,
+            secondOriginId: nearOriginId,
             isUnlink: false,
-            url: "https://example.com"
+            firstProofUrl: "https://example.com"
         },
         amount: "1000000000000000000000"
     });
@@ -186,10 +188,12 @@ test('creates request', async () => {
 
     const request = await aliceUseContract.getVerificationRequest({ id });
     expect(request).toEqual({
-        firstAccount: nearAliceId + '/' + nearOriginId,
-        secondAccount: ACCOUNT_1.id + '/' + ACCOUNT_1.originId,
+        firstAccount: ACCOUNT_1.id + '/' + ACCOUNT_1.originId,
+        secondAccount: nearAliceId + '/' + nearOriginId,
         isUnlink: false,
-        proofUrl: "https://example.com"
+        firstProofUrl: "https://example.com",
+        secondProofUrl: "",
+        transactionSender: "alice.test.near/near/testnet"
     });
 });
 
@@ -261,11 +265,13 @@ test('approve the unlinking request, get the request approve and unconnect accou
     ]]);
     
     const id = await aliceUseContract.requestVerification({
-        args: { 
-            accountId: ACCOUNT_1.id,
-            originId: ACCOUNT_1.originId,
+        args: {
+            firstAccountId: ACCOUNT_1.id,
+            firstOriginId: ACCOUNT_1.originId,
+            secondAccountId: nearAliceId,
+            secondOriginId: nearOriginId,
             isUnlink: true,
-            url: "https://example.com"
+            firstProofUrl: "https://example.com"
         },
         amount: "1000000000000000000000"
     });
@@ -295,21 +301,25 @@ test('approve the unlinking request, get the request approve and unconnect accou
 
 test('approve two linking requests, get the requests approves and connect accounts', async () => {
     await aliceUseContract.requestVerification({
-        args: { 
-            accountId: ACCOUNT_1.id,
-            originId: ACCOUNT_1.originId,
+        args: {
+            firstAccountId: ACCOUNT_1.id,
+            firstOriginId: ACCOUNT_1.originId,
+            secondAccountId: nearAliceId,
+            secondOriginId: nearOriginId,
             isUnlink: false,
-            url: "https://example.com"
+            firstProofUrl: "https://example.com"
         },
         amount: "1000000000000000000000"
     });
 
     await bobUseContract.requestVerification({
-        args: { 
-            accountId: ACCOUNT_1.id,
-            originId: ACCOUNT_1.originId,
+        args: {
+            firstAccountId: ACCOUNT_1.id,
+            firstOriginId: ACCOUNT_1.originId,
+            secondAccountId: nearBobId,
+            secondOriginId: nearOriginId,
             isUnlink: false,
-            url: "https://example.com"
+            firstProofUrl: "https://example.com"
         },
         amount: "1000000000000000000000"
     });
@@ -454,31 +464,37 @@ const ACCOUNT_4 = {
 
 test('recursively getting the entire network of connected accounts', async () => {
   await aliceUseContract.requestVerification({
-      args: { 
-          accountId: ACCOUNT_2.id,
-          originId: ACCOUNT_2.originId,
+      args: {
+          firstAccountId: ACCOUNT_2.id,
+          firstOriginId: ACCOUNT_2.originId,
+          secondAccountId: nearAliceId,
+          secondOriginId: nearOriginId,
           isUnlink: false,
-          url: "https://example.com"
+          firstProofUrl: "https://example.com"
       },
       amount: "1000000000000000000000"
   });
 
   await bobUseContract.requestVerification({
-      args: { 
-          accountId: ACCOUNT_3.id,
-          originId: ACCOUNT_3.originId,
+      args: {
+          firstAccountId: ACCOUNT_3.id,
+          firstOriginId: ACCOUNT_3.originId,
+          secondAccountId: nearBobId,
+          secondOriginId: nearOriginId,
           isUnlink: false,
-          url: "https://example.com"
+          firstProofUrl: "https://example.com"
       },
       amount: "1000000000000000000000"
   });
 
   await bobUseContract.requestVerification({
-      args: { 
-          accountId: ACCOUNT_4.id,
-          originId: ACCOUNT_4.originId,
+      args: {
+          firstAccountId: ACCOUNT_4.id,
+          firstOriginId: ACCOUNT_4.originId,
+          secondAccountId: nearBobId,
+          secondOriginId: nearOriginId,
           isUnlink: false,
-          url: "https://example.com"
+          firstProofUrl: "https://example.com"
       },
       amount: "1000000000000000000000"
   });

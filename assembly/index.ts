@@ -16,22 +16,9 @@ import {
   VerificationRequest
 } from './modules';
 
-// !!! NETWORK TYPE !!!
-const NEAR_NETWORK = 'testnet';
+const NEAR_NETWORK = 'testnet';//      !!! NETWORK TYPE !!!
 
-type NearAccountId = string; // example: user.near, user.testnet
-
-//  ***** AccountInfoForOracle *****
-//  SCHEME: accountId + / + origin or chain + / + network
-//  Examples:
-//  * user.near/near/mainnet
-//  * user.testnet/near/testnet
-//  * twitter_user/twitter
-//  * ins_account/instagram
-//  * google_account/google
-//  * 0xF64929376812667BDa7D962661229f8b8dd90687/ethereum/goerli
-//  * buidl.eth/ethereum/mainnet
-//  *****
+type NearAccountId = string; //  example: user.near, user.testnet
 
 //// MODELS
 
@@ -42,9 +29,6 @@ const ACTIVE_CONTRACT_KEY = "c";
 
 // Identity
 
-//  *****
-//  _connectedAccounts: AccountGlobalId ----> linked AccountGlobalIds, closeness=1
-//  *****
 const _connectedAccounts = new PersistentUnorderedMap<AccountGlobalId, PersistentSet<AccountGlobalId>>("d"); 
 
 const _statuses = new PersistentUnorderedMap<AccountGlobalId, AccountState>("e"); 
@@ -332,13 +316,15 @@ export function unlinkAll(): void {
 // Requests
 
 export function requestVerification(
-  accountId: string,
-  originId: string,
+  firstAccountId: string,
+  firstOriginId: string,
+  secondAccountId: string,
+  secondOriginId: string,
   isUnlink: boolean,
-  url: string
+  firstProofUrl: string = '',
+  secondProofUrl: string = '',
 ): u32 {
   _active();
-
   assert(Context.sender == Context.predecessor, "Cross-contract calls is not allowed");
   assert(
     u128.ge(Context.attachedDeposit, storage.get<u128>(MIN_STAKE_AMOUNT_KEY, u128.Zero)!),
@@ -346,53 +332,88 @@ export function requestVerification(
   );
 
   const senderOrigin = 'near' + '/' + NEAR_NETWORK
-  const firstAccount = Context.sender + '/' + senderOrigin;
+  const senderAccount = Context.sender + '/' + senderOrigin;
 
-  const secondAccount = accountId + '/' + originId;
+  const firstAccountGlobalId = firstAccountId + '/' + firstOriginId;
+  const secondAccountGlobalId = secondAccountId + '/' + secondOriginId;
 
-  if (!_statuses.contains(firstAccount)) {
-    _statuses.set(firstAccount, new AccountState());
+  // *********** RESTRICTIONS ************
+  //
+  // no MAINNET NEAR accounts
+  // no TWO TESTNET NEAR accounts directly
+  // no ETHEREUM accounts and other blockchains         !!!! ToDo --- TEST IT! ---- !!!!
+  // connecting NEAR account should be the Sender
+  //
+  // *************************************
+  // assert(
+  //   firstOriginId !== 'near/mainnet' && secondAccountId !== 'near/mainnet',
+  //   'Currently you cannot connect two NEAR accounts directly'
+  // );
+  // assert(
+  //   !(firstOriginId === 'near/testnet' && secondAccountId === 'near/testnet'),
+  //   'Currently you cannot connect two NEAR accounts directly'
+  // );
+  // assert(
+  //   firstOriginId.split('/')[0] !== 'ethereum' && secondAccountId.split('/')[0] !== 'ethereum',
+  //   'Currently you cannot connect Ethereum accounts'
+  // );
+  // if (firstOriginId === 'near/testnet') assert(
+  //   firstAccountId == Context.sender,
+  //   'Connecting NEAR account should be the Sender of the transaction'
+  // );
+  // if (secondOriginId === 'near/testnet') assert(
+  //   secondAccountId == Context.sender,
+  //   'Connecting NEAR account should be the Sender of the transaction'
+  // );
+  // *************************************
+
+  if (!_statuses.contains(firstAccountGlobalId)) {
+    _statuses.set(firstAccountGlobalId, new AccountState());
   }
-
-  if (!_statuses.contains(secondAccount)) {
-    _statuses.set(secondAccount, new AccountState());
+  if (!_statuses.contains(secondAccountGlobalId)) {
+    _statuses.set(secondAccountGlobalId, new AccountState());
   }
 
   // ToDo: audit it
   if (isUnlink) {
-    assert(_connectedAccounts.contains(secondAccount), "Account " + accountId + " doesn't have linked accounts.");
-    const connected1Accounts = _connectedAccounts.get(secondAccount);
-    assert(connected1Accounts!.has(firstAccount), "Account " + Context.sender + " was not connected to " + accountId);
+    assert(_connectedAccounts.contains(secondAccountGlobalId), "Account " + secondAccountId + " doesn't have linked accounts.");
+    const connected1Accounts = _connectedAccounts.get(secondAccountGlobalId);
+    assert(connected1Accounts!.has(firstAccountGlobalId), "Account " + firstAccountId + " was not connected to " + secondAccountId);
 
-    assert(_connectedAccounts.contains(firstAccount), "Account " + Context.sender + " doesn't have linked accounts.");
-    const connected2Accounts = _connectedAccounts.get(firstAccount);
-    assert(connected2Accounts!.has(secondAccount), "Account " + accountId + " was not connected to " + Context.sender);
+    assert(_connectedAccounts.contains(firstAccountGlobalId), "Account " + firstAccountId + " doesn't have linked accounts.");
+    const connected2Accounts = _connectedAccounts.get(firstAccountGlobalId);
+    assert(connected2Accounts!.has(secondAccountGlobalId), "Account " + secondAccountId + " was not connected to " + firstAccountId);
   } else {
-    const connected1Accounts = _connectedAccounts.get(secondAccount);
+    const connected1Accounts = _connectedAccounts.get(secondAccountGlobalId);
     if (connected1Accounts) {
-      assert(!connected1Accounts.has(firstAccount), "Account " + accountId + " has already connected to " + Context.sender);
+      assert(!connected1Accounts.has(firstAccountGlobalId), "Account " + secondAccountId + " has already connected to " + firstAccountId);
     }
 
-    const connected2Accounts = _connectedAccounts.get(firstAccount);
+    const connected2Accounts = _connectedAccounts.get(firstAccountGlobalId);
     if (connected2Accounts) {
-      assert(!connected2Accounts.has(secondAccount), "Account " + Context.sender + " has already connected to " + accountId);
+      assert(!connected2Accounts.has(secondAccountGlobalId), "Account " + firstAccountId + " has already connected to " + secondAccountId);
     }
   }
 
   const id = verificationRequests.push(new VerificationRequest(
-    firstAccount,
-    secondAccount,
+    firstAccountGlobalId,
+    secondAccountGlobalId,
     isUnlink,
-    url
+    firstProofUrl,
+    secondProofUrl,
+    senderAccount
   ));
   pendingRequests.add(id);
 
   const oracleAccount = storage.get<NearAccountId>(ORACLE_ACCOUNT_KEY)!;
   ContractPromiseBatch.create(oracleAccount).transfer(Context.attachedDeposit);
 
-  logging.log(
-    Context.sender + " requests to link " + accountId + " account. Proof ID: " + id.toString() + " URL: " + url
-  );
+  logging.log(`
+    ${firstAccountId} requests to link ${secondAccountId} account.
+    Proof ID: ${id.toString()}
+    1st URL: ${firstProofUrl}
+    2nd URL: ${secondProofUrl}
+  `);
 
   return id;
 }
