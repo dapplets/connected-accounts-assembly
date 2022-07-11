@@ -13,111 +13,113 @@ let nearBobId;
 const nearOriginId = 'near/testnet';
 
 beforeAll(async function () {
-  function getConfig(env) {
-    switch (env) {
-      case "sandbox":
-      case "local":
-        return {
-          networkId: "sandbox",
-          nodeUrl: "http://localhost:3030",
-          masterAccount: "test.near",
-          contractAccount: "connected-accounts.test.near",
-          keyPath: "/tmp/near-sandbox/validator_key.json",
-        };
+    function getConfig(env) {
+        switch (env) {
+            case "sandbox":
+            case "local":
+                return {
+                    networkId: "sandbox",
+                    nodeUrl: "http://localhost:3030",
+                    masterAccount: "test.near",
+                    contractAccount: "connected-accounts.test.near",
+                    keyPath: "/tmp/near-sandbox/validator_key.json",
+                };
+        }
     }
-  }
 
-  const contractMethods = {
-    viewMethods: [
-        'getConnectedAccounts',
-        'getMinStakeAmount',
-        'getOracleAccount',
-        'getOwnerAccount',
-        'getPendingRequests',
-        'getVerificationRequest',
-        'getStatus',
-    ],
-    changeMethods: [
-        'initialize',
-        'approveRequest',
-        'rejectRequest',
-        'unlinkAll',
-        'changeOwnerAccount',
-        'changeOracleAccount',
-        'changeMinStake',
-        'requestVerification',
-        'changeStatus',
-    ],
-  };
-  let config;
-  let masterAccount;
-  let masterKey;
-  let pubKey;
-  let keyStore;
-  let near;
+    const contractMethods = {
+        viewMethods: [
+            'getConnectedAccounts',
+            'getMinStakeAmount',
+            'getOracleAccount',
+            'getOwnerAccount',
+            'getPendingRequests',
+            'getVerificationRequest',
+            'getStatus',
+            'getMainAccount',
+            'getRequestStatus',
+        ],
+        changeMethods: [
+            'initialize',
+            'approveRequest',
+            'rejectRequest',
+            'unlinkAll',
+            'changeOwnerAccount',
+            'changeOracleAccount',
+            'changeMinStake',
+            'requestVerification',
+            'changeStatus',
+        ],
+    };
+    let config;
+    let masterAccount;
+    let masterKey;
+    let pubKey;
+    let keyStore;
+    let near;
 
-  config = getConfig(process.env.NEAR_ENV || "sandbox");
-  const keyFile = require(config.keyPath);
-  masterKey = nearAPI.utils.KeyPair.fromString(
-    keyFile.secret_key || keyFile.private_key
-  );
-  pubKey = masterKey.getPublicKey();
-  keyStore = new nearAPI.keyStores.InMemoryKeyStore();
-  keyStore.setKey(config.networkId, config.masterAccount, masterKey);
-  near = await nearAPI.connect({
-    deps: {
-      keyStore,
-    },
-    networkId: config.networkId,
-    nodeUrl: config.nodeUrl,
-  });
-  masterAccount = new nearAPI.Account(near.connection, config.masterAccount);
-  console.log("Finish init NEAR");
-
-  async function createContractUser(
-    accountPrefix,
-    contractAccountId,
-    contractMethods
-  ) {
-    let accountId = accountPrefix + "." + config.masterAccount;
-    await masterAccount.createAccount(
-      accountId,
-      pubKey,
-      new BN(10).pow(new BN(25))
+    config = getConfig(process.env.NEAR_ENV || "sandbox");
+    const keyFile = require(config.keyPath);
+    masterKey = nearAPI.utils.KeyPair.fromString(
+        keyFile.secret_key || keyFile.private_key
     );
-    keyStore.setKey(config.networkId, accountId, masterKey);
-    const account = new nearAPI.Account(near.connection, accountId);
-    const accountUseContract = new nearAPI.Contract(
-      account,
-      contractAccountId,
-      contractMethods
+    pubKey = masterKey.getPublicKey();
+    keyStore = new nearAPI.keyStores.InMemoryKeyStore();
+    keyStore.setKey(config.networkId, config.masterAccount, masterKey);
+    near = await nearAPI.connect({
+        deps: {
+            keyStore,
+        },
+        networkId: config.networkId,
+        nodeUrl: config.nodeUrl,
+    });
+    masterAccount = new nearAPI.Account(near.connection, config.masterAccount);
+    console.log("Finish init NEAR");
+
+    async function createContractUser(
+        accountPrefix,
+        contractAccountId,
+        contractMethods
+    ) {
+        let accountId = accountPrefix + "." + config.masterAccount;
+        await masterAccount.createAccount(
+            accountId,
+            pubKey,
+            new BN(10).pow(new BN(25))
+        );
+        keyStore.setKey(config.networkId, accountId, masterKey);
+        const account = new nearAPI.Account(near.connection, accountId);
+        const accountUseContract = new nearAPI.Contract(
+            account,
+            contractAccountId,
+            contractMethods
+        );
+        return accountUseContract;
+    }
+
+    const contract = await fs.readFile("./out/main.wasm");
+    const _contractAccount = await masterAccount.createAndDeployContract(
+        config.contractAccount,
+        pubKey,
+        contract,
+        new BN(10).pow(new BN(25))
     );
-    return accountUseContract;
-  }
 
-  const contract = await fs.readFile("./out/main.wasm");
-  const _contractAccount = await masterAccount.createAndDeployContract(
-    config.contractAccount,
-    pubKey,
-    contract,
-    new BN(10).pow(new BN(25))
-  );
+    aliceUseContract = await createContractUser(
+        "alice",
+        config.contractAccount,
+        contractMethods
+    );
+    nearAliceId = aliceUseContract.account.accountId;
 
-  aliceUseContract = await createContractUser(
-    "alice",
-    config.contractAccount,
-    contractMethods
-  );
-  nearAliceId = aliceUseContract.account.accountId;
+    bobUseContract = await createContractUser(
+        "bob",
+        config.contractAccount,
+        contractMethods
+    );
+    nearBobId = bobUseContract.account.accountId;
 
-  bobUseContract = await createContractUser(
-    "bob",
-    config.contractAccount,
-    contractMethods
-  );
-  nearBobId = bobUseContract.account.accountId;
-
-  console.log("Finish deploy contracts and create test accounts");
+    console.log("Finish deploy contracts and create test accounts");
 });
 
 test('initialize contract', async () => {
@@ -399,8 +401,8 @@ test('get account status', async () => {
     });
     expect(aliceStatus).toBe(false);
     const bobStatus = await aliceUseContract.getStatus({
-      accountId: nearBobId,
-      originId: nearOriginId
+        accountId: nearBobId,
+        originId: nearOriginId
     });
     expect(bobStatus).toBe(false);
 });
@@ -441,8 +443,8 @@ test('change account status', async () => {
     expect(aliceStatus2).toBe(false);
 
     const bobStatus = await aliceUseContract.getStatus({
-      accountId: nearBobId,
-      originId: nearOriginId
+        accountId: nearBobId,
+        originId: nearOriginId
     });
     expect(bobStatus).toBe(false);
 });
@@ -463,132 +465,188 @@ const ACCOUNT_4 = {
 };
 
 test('recursively getting the entire network of connected accounts', async () => {
-  await aliceUseContract.requestVerification({
-      args: {
-          firstAccountId: ACCOUNT_2.id,
-          firstOriginId: ACCOUNT_2.originId,
-          secondAccountId: nearAliceId,
-          secondOriginId: nearOriginId,
-          isUnlink: false,
-          firstProofUrl: "https://example.com"
-      },
-      amount: "1000000000000000000000"
-  });
+    await aliceUseContract.requestVerification({
+        args: {
+            firstAccountId: ACCOUNT_2.id,
+            firstOriginId: ACCOUNT_2.originId,
+            secondAccountId: nearAliceId,
+            secondOriginId: nearOriginId,
+            isUnlink: false,
+            firstProofUrl: "https://example.com"
+        },
+        amount: "1000000000000000000000"
+    });
 
-  await bobUseContract.requestVerification({
-      args: {
-          firstAccountId: ACCOUNT_3.id,
-          firstOriginId: ACCOUNT_3.originId,
-          secondAccountId: nearBobId,
-          secondOriginId: nearOriginId,
-          isUnlink: false,
-          firstProofUrl: "https://example.com"
-      },
-      amount: "1000000000000000000000"
-  });
+    await bobUseContract.requestVerification({
+        args: {
+            firstAccountId: ACCOUNT_3.id,
+            firstOriginId: ACCOUNT_3.originId,
+            secondAccountId: nearBobId,
+            secondOriginId: nearOriginId,
+            isUnlink: false,
+            firstProofUrl: "https://example.com"
+        },
+        amount: "1000000000000000000000"
+    });
 
-  await bobUseContract.requestVerification({
-      args: {
-          firstAccountId: ACCOUNT_4.id,
-          firstOriginId: ACCOUNT_4.originId,
-          secondAccountId: nearBobId,
-          secondOriginId: nearOriginId,
-          isUnlink: false,
-          firstProofUrl: "https://example.com"
-      },
-      amount: "1000000000000000000000"
-  });
+    await bobUseContract.requestVerification({
+        args: {
+            firstAccountId: ACCOUNT_4.id,
+            firstOriginId: ACCOUNT_4.originId,
+            secondAccountId: nearBobId,
+            secondOriginId: nearOriginId,
+            isUnlink: false,
+            firstProofUrl: "https://example.com"
+        },
+        amount: "1000000000000000000000"
+    });
 
-  const pendingRequests = await aliceUseContract.getPendingRequests();
-  expect(pendingRequests.length).toBe(3);
+    const pendingRequests = await aliceUseContract.getPendingRequests();
+    expect(pendingRequests.length).toBe(3);
 
-  const aliceRequestId = pendingRequests[0];
-  await aliceUseContract.approveRequest({ args: { requestId: aliceRequestId } });
+    const aliceRequestId = pendingRequests[0];
+    await aliceUseContract.approveRequest({ args: { requestId: aliceRequestId } });
 
-  const bobRequestId1 = pendingRequests[1];
-  await aliceUseContract.approveRequest({ args: { requestId: bobRequestId1 } });
+    const bobRequestId1 = pendingRequests[1];
+    await aliceUseContract.approveRequest({ args: { requestId: bobRequestId1 } });
 
-  const bobRequestId2 = pendingRequests[2];
-  await aliceUseContract.approveRequest({ args: { requestId: bobRequestId2 } });
+    const bobRequestId2 = pendingRequests[2];
+    await aliceUseContract.approveRequest({ args: { requestId: bobRequestId2 } });
 
-  const connectedAccountsToAliseAccount = await aliceUseContract.getConnectedAccounts({
-      accountId: nearAliceId,
-      originId: nearOriginId
-  });
+    const connectedAccountsToAliseAccount = await aliceUseContract.getConnectedAccounts({
+        accountId: nearAliceId,
+        originId: nearOriginId
+    });
 
-  console.log('*** connectedAccountsToAliseAccount', connectedAccountsToAliseAccount)
+    console.log('*** connectedAccountsToAliseAccount', connectedAccountsToAliseAccount)
 
-  expect(connectedAccountsToAliseAccount).toEqual([
-      [
-          {
-              id: ACCOUNT_1.id + '/' + ACCOUNT_1.originId,
-              status: {
-                  isMain: true
-              }
-          },
-          {
-              id: ACCOUNT_2.id + '/' + ACCOUNT_2.originId,
-              status: {
-                  isMain: false
-              }
-          }
-      ],
-      [
-          {
-              id: nearBobId + '/' + nearOriginId,
-              status: {
-                  isMain: false
-              }
-          }
-      ],
-      [
-          {
-              id: ACCOUNT_3.id + '/' + ACCOUNT_3.originId,
-              status: {
-                  isMain: false
-              }
-          },
-          {
-              id: ACCOUNT_4.id + '/' + ACCOUNT_4.originId,
-              status: {
-                  isMain: false
-              }
-          }
-      ]
-  ]);
+    expect(connectedAccountsToAliseAccount).toEqual([
+        [
+            {
+                id: ACCOUNT_1.id + '/' + ACCOUNT_1.originId,
+                status: {
+                    isMain: true
+                }
+            },
+            {
+                id: ACCOUNT_2.id + '/' + ACCOUNT_2.originId,
+                status: {
+                    isMain: false
+                }
+            }
+        ],
+        [
+            {
+                id: nearBobId + '/' + nearOriginId,
+                status: {
+                    isMain: false
+                }
+            }
+        ],
+        [
+            {
+                id: ACCOUNT_3.id + '/' + ACCOUNT_3.originId,
+                status: {
+                    isMain: false
+                }
+            },
+            {
+                id: ACCOUNT_4.id + '/' + ACCOUNT_4.originId,
+                status: {
+                    isMain: false
+                }
+            }
+        ]
+    ]);
+
+    const connectedAccountsTo4Account = await aliceUseContract.getConnectedAccounts({
+        accountId: ACCOUNT_4.id,
+        originId: ACCOUNT_4.originId
+    });
+    console.log('*** connectedAccounts to ACCOUNT_4', connectedAccountsTo4Account)
+
+
+    expect(connectedAccountsTo4Account).toEqual([
+        [
+            {
+                id: nearBobId + '/' + nearOriginId,
+                status: {
+                    isMain: false
+                }
+            }
+        ],
+        [
+            {
+                id: ACCOUNT_1.id + '/' + ACCOUNT_1.originId,
+                status: {
+                    isMain: true
+                }
+            },
+            {
+                id: ACCOUNT_3.id + '/' + ACCOUNT_3.originId,
+                status: {
+                    isMain: false
+                }
+            }
+        ],
+        [
+            {
+                id: nearAliceId + '/' + nearOriginId,
+                status: {
+                    isMain: false
+                }
+            }
+        ],
+        [
+            {
+                id: ACCOUNT_2.id + '/' + ACCOUNT_2.originId,
+                status: {
+                    isMain: false
+                }
+            }
+        ]
+    ]);
 });
 
 test('recursively getting 2 levels of the connected accounts network', async () => {
-  const connectedAccountsToAliseAccount = await aliceUseContract.getConnectedAccounts({
-      accountId: nearAliceId,
-      originId: nearOriginId,
-      closeness: 2
-  });
+    const connectedAccountsToAliseAccount = await aliceUseContract.getConnectedAccounts({
+        accountId: nearAliceId,
+        originId: nearOriginId,
+        closeness: 2
+    });
 
-  console.log('*** connectedAccountsToAliseAccount', connectedAccountsToAliseAccount)
+    console.log('*** connectedAccountsToAliseAccount', connectedAccountsToAliseAccount)
 
-  expect(connectedAccountsToAliseAccount).toEqual([
-      [
-          {
-              id: ACCOUNT_1.id + '/' + ACCOUNT_1.originId,
-              status: {
-                  isMain: true
-              }
-          },
-          {
-              id: ACCOUNT_2.id + '/' + ACCOUNT_2.originId,
-              status: {
-                  isMain: false
-              }
-          }
-      ],
-      [
-          {
-              id: nearBobId + '/' + nearOriginId,
-              status: {
-                  isMain: false
-              }
-          }
-      ]
-  ]);
+    expect(connectedAccountsToAliseAccount).toEqual([
+        [
+            {
+                id: ACCOUNT_1.id + '/' + ACCOUNT_1.originId,
+                status: {
+                    isMain: true
+                }
+            },
+            {
+                id: ACCOUNT_2.id + '/' + ACCOUNT_2.originId,
+                status: {
+                    isMain: false
+                }
+            }
+        ],
+        [
+            {
+                id: nearBobId + '/' + nearOriginId,
+                status: {
+                    isMain: false
+                }
+            }
+        ]
+    ]);
+});
+
+test('get main account', async () => {
+    const mainAccountId = await aliceUseContract.getMainAccount({
+        accountId: ACCOUNT_4.id,
+        originId: ACCOUNT_4.originId
+    });
+    expect(mainAccountId).toBe(ACCOUNT_1.id + '/' + ACCOUNT_1.originId);
 });

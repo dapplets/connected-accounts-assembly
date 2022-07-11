@@ -29,7 +29,7 @@ const ACTIVE_CONTRACT_KEY = "c";
 
 // Identity
 
-const _connectedAccounts = new PersistentUnorderedMap<AccountGlobalId, PersistentSet<AccountGlobalId>>("d"); 
+const _connectedAccounts = new PersistentUnorderedMap<AccountGlobalId, Set<AccountGlobalId>>("d"); 
 
 const _statuses = new PersistentUnorderedMap<AccountGlobalId, AccountState>("e"); 
 
@@ -82,11 +82,12 @@ function _getStatus(id: AccountGlobalId): bool {
 }
 
 export function getStatus(accountId: string, originId: string): bool {
+  _active();
   const accountGlobalId: AccountGlobalId = accountId + '/' + originId;
   return _getStatus(accountGlobalId);
 }
 
-function getAccounts(globalId: AccountGlobalId): Account[] {
+function _getAccounts(globalId: AccountGlobalId): Account[] {
   const connectedIds = _connectedAccounts.get(globalId);
   if (connectedIds) {
     const ids = connectedIds.values();
@@ -98,7 +99,7 @@ function getAccounts(globalId: AccountGlobalId): Account[] {
   }
 }
 
-function getAccountsDeep(
+function _getAccountsDeep(
   closeness: i8,
   globalIds: AccountGlobalId[],
   allAccountIdsPlain: AccountGlobalId[],
@@ -106,7 +107,7 @@ function getAccountsDeep(
 ): Account[][] {
   const currentLayerAccounts: Account[][] = [];
   for (let i = 0; i < globalIds.length; i++) {
-    const acc = getAccounts(globalIds[i]);
+    const acc = _getAccounts(globalIds[i]);
     if (acc) {
       const uniqueIds: AccountGlobalId[] = [];
       const uniqueAccounts: Account[] = [];
@@ -129,7 +130,7 @@ function getAccountsDeep(
     if (closeness - 1 === 0) {
       return allAccountsLayers;
     } else {
-      return getAccountsDeep(closeness - 1, accountsIds, allAccountIdsPlain, allAccountsLayers);
+      return _getAccountsDeep(closeness - 1, accountsIds, allAccountIdsPlain, allAccountsLayers);
     }
   } else {
     return allAccountsLayers;
@@ -144,10 +145,52 @@ export function getConnectedAccounts(
   _active();
   const accountGlobalId = accountId + '/' + originId;
   if (closeness === 1) {
-    return [getAccounts(accountGlobalId)];
+    return [_getAccounts(accountGlobalId)];
   } else {
-    return getAccountsDeep(closeness, [accountGlobalId], [accountGlobalId]);
+    return _getAccountsDeep(closeness, [accountGlobalId], [accountGlobalId]);
   }
+}
+
+function _getMainAccountDeep(
+  globalIds: AccountGlobalId[],
+  allAccountIdsPlain: AccountGlobalId[]
+): AccountGlobalId | null {
+  const currentLayerAccounts: AccountGlobalId[][] = [];
+  for (let i = 0; i < globalIds.length; i++) {
+    const connectedIds = _connectedAccounts.get(globalIds[i]);
+    if (connectedIds) {
+      const ids = connectedIds.values();
+      const uniqueIds: AccountGlobalId[] = [];
+      for (let j = 0; j < ids.length; j++) {
+        const accStatus = _statuses.get(ids[j]);
+        if (accStatus && accStatus.isMain) return ids[j];
+        if (!allAccountIdsPlain.includes(ids[j])) {
+          uniqueIds.push(ids[j]);
+          allAccountIdsPlain.push(ids[j]);
+        }
+      }
+      if (uniqueIds.length !== 0) {
+        currentLayerAccounts.push(uniqueIds);
+      }
+    }
+  }
+  if (currentLayerAccounts.length !== 0) {
+    const accountsIds = currentLayerAccounts.flat();
+    return _getMainAccountDeep(accountsIds, allAccountIdsPlain);
+  } else {
+    return null;
+  }
+}
+
+export function getMainAccount(
+  accountId: string,
+  originId: string,
+): AccountGlobalId | null {
+  _active();
+  const accountGlobalId = accountId + '/' + originId;
+  const currentIdState = _getStatus(accountGlobalId);
+  if (currentIdState) return accountGlobalId;
+  return _getMainAccountDeep([accountGlobalId], [accountGlobalId]);
 }
 
 export function getOwnerAccount(): NearAccountId | null {
@@ -200,6 +243,7 @@ export function changeStatus(
   originId: string,
   isMain: bool
 ): void {
+  _active();
   const requestGlobalId = accountId + '/' + originId;
   const senderGlobalId = Context.sender + '/' + 'near' + '/' + NEAR_NETWORK;
   assert(_getStatus(requestGlobalId) !== isMain, 'The new state is equal to the previous one');
@@ -251,7 +295,7 @@ export function approveRequest(requestId: u32): void {
   } else {
     const connected1Accounts = _connectedAccounts.get(req.firstAccount);
     if (!connected1Accounts) {
-      const newConnected1Accounts = new PersistentSet<string>('q');
+      const newConnected1Accounts = new Set<string>();
       newConnected1Accounts.add(req.secondAccount);
       _connectedAccounts.set(req.firstAccount, newConnected1Accounts);
     } else {
@@ -262,7 +306,7 @@ export function approveRequest(requestId: u32): void {
 
     const connected2Accounts = _connectedAccounts.get(req.secondAccount);
     if (!connected2Accounts) {
-      const newConnected2Accounts = new PersistentSet<string>('w');
+      const newConnected2Accounts = new Set<string>();
       newConnected2Accounts.add(req.firstAccount);
       _connectedAccounts.set(req.secondAccount, newConnected2Accounts);
     } else {
@@ -336,36 +380,6 @@ export function requestVerification(
 
   const firstAccountGlobalId = firstAccountId + '/' + firstOriginId;
   const secondAccountGlobalId = secondAccountId + '/' + secondOriginId;
-
-  // *********** RESTRICTIONS ************
-  //
-  // no MAINNET NEAR accounts
-  // no TWO TESTNET NEAR accounts directly
-  // no ETHEREUM accounts and other blockchains         !!!! ToDo --- TEST IT! ---- !!!!
-  // connecting NEAR account should be the Sender
-  //
-  // *************************************
-  // assert(
-  //   firstOriginId !== 'near/mainnet' && secondAccountId !== 'near/mainnet',
-  //   'Currently you cannot connect two NEAR accounts directly'
-  // );
-  // assert(
-  //   !(firstOriginId === 'near/testnet' && secondAccountId === 'near/testnet'),
-  //   'Currently you cannot connect two NEAR accounts directly'
-  // );
-  // assert(
-  //   firstOriginId.split('/')[0] !== 'ethereum' && secondAccountId.split('/')[0] !== 'ethereum',
-  //   'Currently you cannot connect Ethereum accounts'
-  // );
-  // if (firstOriginId === 'near/testnet') assert(
-  //   firstAccountId == Context.sender,
-  //   'Connecting NEAR account should be the Sender of the transaction'
-  // );
-  // if (secondOriginId === 'near/testnet') assert(
-  //   secondAccountId == Context.sender,
-  //   'Connecting NEAR account should be the Sender of the transaction'
-  // );
-  // *************************************
 
   if (!_statuses.contains(firstAccountGlobalId)) {
     _statuses.set(firstAccountGlobalId, new AccountState());
