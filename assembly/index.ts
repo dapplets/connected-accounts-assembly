@@ -16,7 +16,7 @@ import {
   VerificationRequest
 } from './modules';
 
-const NEAR_NETWORK = 'testnet';//      !!! NETWORK TYPE !!!
+const NEAR_NETWORK = 'testnet'; //      !!! NETWORK TYPE !!!
 
 type NearAccountId = string; //  example: user.near, user.testnet
 
@@ -49,7 +49,10 @@ export function initialize(
   oracleAccountId: NearAccountId,
   minStakeAmount: u128,
 ): void {
-  assert(storage.getPrimitive<bool>(INIT_CONTRACT_KEY, false) == false, "Contract already initialized");
+  assert(
+    storage.getPrimitive<bool>(INIT_CONTRACT_KEY, false) == false,
+    "Contract already initialized"
+  );
 
   storage.set<NearAccountId>(OWNER_ACCOUNT_KEY, ownerAccountId);
   storage.set<NearAccountId>(ORACLE_ACCOUNT_KEY, oracleAccountId);
@@ -87,54 +90,64 @@ export function getStatus(accountId: string, originId: string): bool {
   return _getStatus(accountGlobalId);
 }
 
-function _getAccounts(globalId: AccountGlobalId): Account[] {
+function _getIds(globalId: AccountGlobalId): AccountGlobalId[] {
   const connectedIds = _connectedAccounts.get(globalId);
   if (connectedIds) {
     const ids = connectedIds.values();
-    const accounts: Account[] = ids.map<Account>((id: AccountGlobalId) => new Account(id, new AccountState(_getStatus(id))));
-    return accounts;
+    return ids;
   } else {
-    const res: Account[] = [];
+    const res: AccountGlobalId[] = [];
     return res;
+  }
+}
+
+function _getIdsDeep(
+  closeness: i8,
+  prevLayerIds: AccountGlobalId[],
+  accountIdsPlain: AccountGlobalId[],
+  accountIdsLayers: AccountGlobalId[][] = []
+): AccountGlobalId[][] {
+  const unicIds: AccountGlobalId[] = [];
+  for (let i = 0; i < prevLayerIds.length; i++) {
+    const acc = _getIds(prevLayerIds[i]);
+    for (let j = 0; j < acc.length; j++) {
+      if (!accountIdsPlain.includes(acc[j])) {
+        accountIdsPlain.push(acc[j]);
+        unicIds.push(acc[j]);
+      }
+    }
+  }
+  if (unicIds.length !== 0) {
+    accountIdsLayers.push(unicIds);
+    if (closeness - 1 === 0) {
+      return accountIdsLayers;
+    } else {
+      return _getIdsDeep(closeness - 1, unicIds, accountIdsPlain, accountIdsLayers);
+    }
+  } else {
+    return accountIdsLayers;
   }
 }
 
 function _getAccountsDeep(
   closeness: i8,
   globalIds: AccountGlobalId[],
-  allAccountIdsPlain: AccountGlobalId[],
-  allAccountsLayers: Account[][] = []
+  allAccountIdsPlain: AccountGlobalId[]
 ): Account[][] {
-  const currentLayerAccounts: Account[][] = [];
-  for (let i = 0; i < globalIds.length; i++) {
-    const acc = _getAccounts(globalIds[i]);
-    if (acc) {
-      const uniqueIds: AccountGlobalId[] = [];
-      const uniqueAccounts: Account[] = [];
-      for (let j = 0; j < acc.length; j++) {
-        if (!allAccountIdsPlain.includes(acc[j].id)) {
-          uniqueIds.push(acc[j].id);
-          allAccountIdsPlain.push(acc[j].id);
-          uniqueAccounts.push(acc[j]);
-        }
-      }
-      if (uniqueIds.length !== 0) {
-        currentLayerAccounts.push(uniqueAccounts);
-      }
+  const ids = _getIdsDeep(
+    closeness,
+    globalIds,
+    allAccountIdsPlain
+  );
+  const accounts: Account[][] = [];
+  for (let i = 0; i < ids.length; i++) {
+    const accLayer: Account[] = [];
+    for (let j = 0; j < ids[i].length; j++) {
+      accLayer.push(new Account(ids[i][j], new AccountState(_getStatus(ids[i][j]))));
     }
+    accounts.push(accLayer);
   }
-  if (currentLayerAccounts.length !== 0) {
-    const accounts = currentLayerAccounts.flat();
-    allAccountsLayers.push(accounts);
-    const accountsIds = accounts.map<AccountGlobalId>((ac) => ac.id);
-    if (closeness - 1 === 0) {
-      return allAccountsLayers;
-    } else {
-      return _getAccountsDeep(closeness - 1, accountsIds, allAccountIdsPlain, allAccountsLayers);
-    }
-  } else {
-    return allAccountsLayers;
-  }
+  return accounts;
 }
 
 export function getConnectedAccounts(
@@ -145,38 +158,35 @@ export function getConnectedAccounts(
   _active();
   const accountGlobalId = accountId + '/' + originId;
   if (closeness === 1) {
-    return [_getAccounts(accountGlobalId)];
+    const ids = _getIds(accountGlobalId);
+    const accounts: Account[] = [];
+    for (let i = 0; i < ids.length; i++) {
+      accounts.push(new Account(ids[i], new AccountState(_getStatus(ids[i]))));
+    }
+    return [accounts];
   } else {
     return _getAccountsDeep(closeness, [accountGlobalId], [accountGlobalId]);
   }
 }
 
 function _getMainAccountDeep(
-  globalIds: AccountGlobalId[],
+  prevLevelIds: AccountGlobalId[],
   allAccountIdsPlain: AccountGlobalId[]
 ): AccountGlobalId | null {
-  const currentLayerAccounts: AccountGlobalId[][] = [];
-  for (let i = 0; i < globalIds.length; i++) {
-    const connectedIds = _connectedAccounts.get(globalIds[i]);
-    if (connectedIds) {
-      const ids = connectedIds.values();
-      const uniqueIds: AccountGlobalId[] = [];
-      for (let j = 0; j < ids.length; j++) {
-        const accStatus = _statuses.get(ids[j]);
-        if (accStatus && accStatus.isMain) return ids[j];
-        if (!allAccountIdsPlain.includes(ids[j])) {
-          uniqueIds.push(ids[j]);
-          allAccountIdsPlain.push(ids[j]);
-        }
-      }
-      if (uniqueIds.length !== 0) {
-        currentLayerAccounts.push(uniqueIds);
+  const uniqueIds: AccountGlobalId[] = [];
+  for (let i = 0; i < prevLevelIds.length; i++) {
+    const ids = _getIds(prevLevelIds[i]);
+    for (let j = 0; j < ids.length; j++) {
+      const accStatus = _statuses.get(ids[j]);
+      if (accStatus && accStatus.isMain) return ids[j];
+      if (!allAccountIdsPlain.includes(ids[j])) {
+        uniqueIds.push(ids[j]);
+        allAccountIdsPlain.push(ids[j]);
       }
     }
   }
-  if (currentLayerAccounts.length !== 0) {
-    const accountsIds = currentLayerAccounts.flat();
-    return _getMainAccountDeep(accountsIds, allAccountIdsPlain);
+  if (uniqueIds.length !== 0) {
+    return _getMainAccountDeep(uniqueIds, allAccountIdsPlain);
   } else {
     return null;
   }
@@ -246,11 +256,26 @@ export function changeStatus(
   _active();
   const requestGlobalId = accountId + '/' + originId;
   const senderGlobalId = Context.sender + '/' + 'near' + '/' + NEAR_NETWORK;
-  assert(_getStatus(requestGlobalId) !== isMain, 'The new state is equal to the previous one');
+  assert(
+    _getStatus(requestGlobalId) !== isMain,
+    'The new state is equal to the previous one'
+  );
   if (requestGlobalId != senderGlobalId) {
-    assert(_connectedAccounts.contains(senderGlobalId), 'Only owner can change status');
-    const connectedAccountsGIds = _connectedAccounts.get(senderGlobalId);
-    assert(connectedAccountsGIds && connectedAccountsGIds.has(requestGlobalId), 'Only owner can change status');
+    assert(
+      _connectedAccounts.contains(senderGlobalId),
+      'Transaction sender does not have connected accounts. Only owner can change status.'
+    );
+    const connectedAccountsIds = _getIdsDeep(-1, [senderGlobalId], [senderGlobalId]);
+    const connectedAccountsGIdsPlain: AccountGlobalId[] = [];
+    for (let i = 0; i < connectedAccountsIds.length; i++) {
+      for (let k = 0; k < connectedAccountsIds[i].length; k++) {
+        connectedAccountsGIdsPlain.push(connectedAccountsIds[i][k]);
+      }
+    };
+    assert(
+      connectedAccountsGIdsPlain.includes(requestGlobalId),
+      'Requested account is not in the transaction senders net. Only owner can change status.'
+    );
   }
   if (isMain) {
     if (_connectedAccounts.contains(senderGlobalId)) {
@@ -276,46 +301,87 @@ export function approveRequest(requestId: u32): void {
   assert(verificationRequests.containsIndex(requestId), "Non-existent request ID");
   assert(pendingRequests.has(requestId), "The request has already been processed");
   const req = verificationRequests[requestId];
+  const firstAccount = req.firstAccount;
+  const secondAccount = req.secondAccount;
 
   if (req.isUnlink) {
-    assert(_connectedAccounts.contains(req.firstAccount), "Account " + req.firstAccount + " not found.");
-    const connected1Accounts = _connectedAccounts.get(req.firstAccount);
-    assert(connected1Accounts!.has(req.secondAccount), "Account " + req.secondAccount + " was not connected to " + req.firstAccount);
-    connected1Accounts!.delete(req.secondAccount);
+    assert(
+      _connectedAccounts.contains(firstAccount),
+      "Account " + firstAccount + " not found."
+    );
+    const connected1Accounts = _connectedAccounts.get(firstAccount);
+    assert(
+      connected1Accounts!.has(secondAccount),
+      "Account " + secondAccount + " is not directly connected to " + firstAccount
+    );
+    connected1Accounts!.delete(secondAccount);
 
-    assert(_connectedAccounts.contains(req.secondAccount), "Account " + req.secondAccount + " not found.");
-    const connected2Accounts = _connectedAccounts.get(req.secondAccount);
-    assert(connected2Accounts!.has(req.firstAccount), "Account " + req.firstAccount + " was not connected to " + req.secondAccount);
-    connected2Accounts!.delete(req.firstAccount);
+    assert(
+      _connectedAccounts.contains(secondAccount),
+      "Account " + secondAccount + " not found."
+    );
+    const connected2Accounts = _connectedAccounts.get(secondAccount);
+    assert(
+      connected2Accounts!.has(firstAccount),
+      "Account " + firstAccount + " is not directly connected to " + secondAccount
+    );
+    connected2Accounts!.delete(firstAccount);
 
-    _connectedAccounts.set(req.firstAccount, connected1Accounts!);
-    _connectedAccounts.set(req.secondAccount, connected2Accounts!);
+    _connectedAccounts.set(firstAccount, connected1Accounts!);
+    _connectedAccounts.set(secondAccount, connected2Accounts!);
 
-    logging.log("Accounts " + req.firstAccount + " and " + req.secondAccount + " are unlinked");
+    logging.log("Accounts " + firstAccount + " and " + secondAccount + " are unlinked");
   } else {
-    const connected1Accounts = _connectedAccounts.get(req.firstAccount);
+    const connected1Accounts = _connectedAccounts.get(firstAccount);
     if (!connected1Accounts) {
       const newConnected1Accounts = new Set<string>();
-      newConnected1Accounts.add(req.secondAccount);
-      _connectedAccounts.set(req.firstAccount, newConnected1Accounts);
+      newConnected1Accounts.add(secondAccount);
+      _connectedAccounts.set(firstAccount, newConnected1Accounts);
     } else {
-      assert(!connected1Accounts.has(req.secondAccount), "Account " + req.secondAccount + " has already connected to " + req.firstAccount);
-      connected1Accounts.add(req.secondAccount);
-      _connectedAccounts.set(req.firstAccount, connected1Accounts);
+      assert(
+        !connected1Accounts.has(secondAccount),
+        "Account " + secondAccount + " has already connected to " + firstAccount
+      );
+      connected1Accounts.add(secondAccount);
+      _connectedAccounts.set(firstAccount, connected1Accounts);
     }
 
-    const connected2Accounts = _connectedAccounts.get(req.secondAccount);
+    const connected2Accounts = _connectedAccounts.get(secondAccount);
     if (!connected2Accounts) {
       const newConnected2Accounts = new Set<string>();
-      newConnected2Accounts.add(req.firstAccount);
-      _connectedAccounts.set(req.secondAccount, newConnected2Accounts);
+      newConnected2Accounts.add(firstAccount);
+      _connectedAccounts.set(secondAccount, newConnected2Accounts);
     } else {
-      assert(!connected2Accounts.has(req.firstAccount), "Account " + req.firstAccount + " has already connected to " + req.secondAccount);
-      connected2Accounts.add(req.firstAccount);
-      _connectedAccounts.set(req.secondAccount, connected2Accounts);
+      assert(
+        !connected2Accounts.has(firstAccount),
+        "Account " + firstAccount + " has already connected to " + secondAccount
+      );
+      connected2Accounts.add(firstAccount);
+      _connectedAccounts.set(secondAccount, connected2Accounts);
     }
 
-    logging.log("Accounts " + req.firstAccount + " and " + req.secondAccount + " are linked");
+    const connectedAccounts = _getAccountsDeep(-1, [firstAccount], [firstAccount]);
+    const connectedAccountsPlain: Account[] = [];
+    for (let i = 0; i < connectedAccounts.length; i++) {
+      for (let k = 0; k < connectedAccounts[i].length; k++) {
+        connectedAccountsPlain.push(connectedAccounts[i][k]);
+      }
+    };
+    connectedAccountsPlain.push(new Account(firstAccount, new AccountState(_getStatus(firstAccount))));
+
+    let mainConnectedAccounts: AccountGlobalId[] = [];
+    for (let i = 0; i < connectedAccountsPlain.length; i++) {
+      if (connectedAccountsPlain[i].status.isMain) {
+        mainConnectedAccounts.push(connectedAccountsPlain[i].id);
+      }
+    }
+    if (mainConnectedAccounts.length > 1) {
+      for (let i = 0; i < mainConnectedAccounts.length; i++) {
+        _statuses.set(mainConnectedAccounts[i], new AccountState());
+      }
+    }
+
+    logging.log("Accounts " + firstAccount + " and " + secondAccount + " are linked");
   }
 
   pendingRequests.delete(requestId);
@@ -390,22 +456,40 @@ export function requestVerification(
 
   // ToDo: audit it
   if (isUnlink) {
-    assert(_connectedAccounts.contains(secondAccountGlobalId), "Account " + secondAccountId + " doesn't have linked accounts.");
+    assert(
+      _connectedAccounts.contains(secondAccountGlobalId),
+      "Account " + secondAccountId + " doesn't have connected accounts."
+    );
     const connected1Accounts = _connectedAccounts.get(secondAccountGlobalId);
-    assert(connected1Accounts!.has(firstAccountGlobalId), "Account " + firstAccountId + " was not connected to " + secondAccountId);
+    assert(
+      connected1Accounts!.has(firstAccountGlobalId),
+      "Account " + firstAccountId + " is not directly connected to " + secondAccountId
+    );
 
-    assert(_connectedAccounts.contains(firstAccountGlobalId), "Account " + firstAccountId + " doesn't have linked accounts.");
+    assert(
+      _connectedAccounts.contains(firstAccountGlobalId),
+      "Account " + firstAccountId + " doesn't have connected accounts."
+    );
     const connected2Accounts = _connectedAccounts.get(firstAccountGlobalId);
-    assert(connected2Accounts!.has(secondAccountGlobalId), "Account " + secondAccountId + " was not connected to " + firstAccountId);
+    assert(
+      connected2Accounts!.has(secondAccountGlobalId),
+      "Account " + secondAccountId + " is not directly connected to " + firstAccountId
+    );
   } else {
     const connected1Accounts = _connectedAccounts.get(secondAccountGlobalId);
     if (connected1Accounts) {
-      assert(!connected1Accounts.has(firstAccountGlobalId), "Account " + secondAccountId + " has already connected to " + firstAccountId);
+      assert(
+        !connected1Accounts.has(firstAccountGlobalId),
+        "Account " + secondAccountId + " has already connected to " + firstAccountId
+      );
     }
 
     const connected2Accounts = _connectedAccounts.get(firstAccountGlobalId);
     if (connected2Accounts) {
-      assert(!connected2Accounts.has(secondAccountGlobalId), "Account " + firstAccountId + " has already connected to " + secondAccountId);
+      assert(
+        !connected2Accounts.has(secondAccountGlobalId),
+        "Account " + firstAccountId + " has already connected to " + secondAccountId
+      );
     }
   }
 
