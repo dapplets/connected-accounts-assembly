@@ -650,3 +650,277 @@ test('get main account', async () => {
     });
     expect(mainAccountId).toBe(ACCOUNT_1.id + '/' + ACCOUNT_1.originId);
 });
+
+const ACCOUNT_5 = {
+    id: 'username-5',
+    originId: 'social_network'
+};
+
+test('merge 2 nets with main accouts', async () => {
+    const id_1 = await bobUseContract.requestVerification({
+        args: {
+            firstAccountId: ACCOUNT_1.id,
+            firstOriginId: ACCOUNT_1.originId,
+            secondAccountId: nearBobId,
+            secondOriginId: nearOriginId,
+            isUnlink: true,
+            firstProofUrl: "https://example.com"
+        },
+        amount: "1000000000000000000000"
+    });
+    await aliceUseContract.approveRequest({ args: { requestId: id_1 } });
+
+    const connectedAccounts_1 = await aliceUseContract.getConnectedAccounts({
+        accountId: nearBobId,
+        originId: nearOriginId
+    });
+
+    console.log('*** connectedAccountsToBobAccount', connectedAccounts_1)
+
+    expect(connectedAccounts_1).toEqual([
+        [
+            {
+                id: ACCOUNT_3.id + '/' + ACCOUNT_3.originId,
+                status: {
+                    isMain: false
+                }
+            },
+            {
+                id: ACCOUNT_4.id + '/' + ACCOUNT_4.originId,
+                status: {
+                    isMain: false
+                }
+            }
+        ]
+    ]);
+
+    const connectedAccounts_2 = await aliceUseContract.getConnectedAccounts({
+        accountId: ACCOUNT_1.id,
+        originId: ACCOUNT_1.originId
+    });
+
+    console.log('*** connectedAccountsToACCOUNT_1.id', connectedAccounts_2)
+
+    expect(connectedAccounts_2).toEqual([
+        [
+            {
+                id: nearAliceId + '/' + nearOriginId,
+                status: {
+                    isMain: false
+                }
+            }
+        ],
+        [
+            {
+                id: ACCOUNT_2.id + '/' + ACCOUNT_2.originId,
+                status: {
+                    isMain: false
+                }
+            }
+        ]
+    ]);
+
+    const id_2 = await bobUseContract.requestVerification({
+        args: {
+            firstAccountId: ACCOUNT_5.id,
+            firstOriginId: ACCOUNT_5.originId,
+            secondAccountId: ACCOUNT_3.id,
+            secondOriginId: ACCOUNT_3.originId,
+            isUnlink: false,
+            firstProofUrl: "https://example.com"
+        },
+        amount: "1000000000000000000000"
+    });
+    await aliceUseContract.approveRequest({ args: { requestId: id_2 } });
+
+    await bobUseContract.changeStatus({
+        args: {
+            accountId: ACCOUNT_5.id,
+            originId: ACCOUNT_5.originId,
+            isMain: true
+        }
+    });
+
+    const connectedAccountsToACCOUNT_4 = await aliceUseContract.getConnectedAccounts({
+        accountId: ACCOUNT_4.id,
+        originId: ACCOUNT_4.originId
+    });
+
+    console.log('*** connectedAccountsToACCOUNT_4', connectedAccountsToACCOUNT_4);
+
+    expect(connectedAccountsToACCOUNT_4).toEqual([
+        [
+            {
+                id: nearBobId + '/' + nearOriginId,
+                status: {
+                    isMain: false
+                }
+            }
+        ],
+        [
+            {
+                id: ACCOUNT_3.id + '/' + ACCOUNT_3.originId,
+                status: {
+                    isMain: false
+                }
+            }
+        ],
+        [
+            {
+                id: ACCOUNT_5.id + '/' + ACCOUNT_5.originId,
+                status: {
+                    isMain: true
+                }
+            }
+        ]
+    ]);
+
+    const connectedAccountsToBob = await aliceUseContract.getConnectedAccounts({
+        accountId: nearBobId,
+        originId: nearOriginId
+    });
+
+    console.log('*** connectedAccountsToACCOUNT_4', connectedAccountsToBob);
+
+    expect(connectedAccountsToBob).toEqual([
+        [
+            {
+                id: ACCOUNT_3.id + '/' + ACCOUNT_3.originId,
+                status: {
+                    isMain: false
+                }
+            },
+            {
+                id: ACCOUNT_4.id + '/' + ACCOUNT_4.originId,
+                status: {
+                    isMain: false
+                }
+            }
+        ],
+        [
+            {
+                id: ACCOUNT_5.id + '/' + ACCOUNT_5.originId,
+                status: {
+                    isMain: true
+                }
+            }
+        ]
+    ]);
+
+    const id_3 = await bobUseContract.requestVerification({
+        args: {
+            firstAccountId: nearBobId,
+            firstOriginId: nearOriginId,
+            secondAccountId: ACCOUNT_1.id,
+            secondOriginId: ACCOUNT_1.originId,
+            isUnlink: false,
+            firstProofUrl: "https://example.com"
+        },
+        amount: "1000000000000000000000"
+    });
+    await aliceUseContract.approveRequest({ args: { requestId: id_3 } });
+
+    const connectedAccountsToACCOUNT_1 = await aliceUseContract.getConnectedAccounts({
+        accountId: ACCOUNT_1.id,
+        originId: ACCOUNT_1.originId
+    });
+
+    console.log('*** connectedAccountsToACCOUNT_1', connectedAccountsToACCOUNT_1)
+
+    expect(connectedAccountsToACCOUNT_1).toEqual([
+        [
+            {
+                id: nearAliceId + '/' + nearOriginId,
+                status: {
+                    isMain: false
+                }
+            },
+            {
+                id: nearBobId + '/' + nearOriginId,
+                status: {
+                    isMain: false
+                }
+            }
+        ],
+        [
+            {
+                id: ACCOUNT_2.id + '/' + ACCOUNT_2.originId,
+                status: {
+                    isMain: false
+                }
+            },
+            {
+                id: ACCOUNT_3.id + '/' + ACCOUNT_3.originId,
+                status: {
+                    isMain: false
+                }
+            },
+            {
+                id: ACCOUNT_4.id + '/' + ACCOUNT_4.originId,
+                status: {
+                    isMain: false
+                }
+            }
+        ],
+        [
+            {
+                id: ACCOUNT_5.id + '/' + ACCOUNT_5.originId,
+                status: {
+                    isMain: false
+                }
+            }
+        ]
+    ]);
+
+    const connectedAccountsToBobAccount = await aliceUseContract.getConnectedAccounts({
+        accountId: nearBobId,
+        originId: nearOriginId
+    });
+
+    console.log('*** connectedAccountsToBobAccount', connectedAccountsToBobAccount)
+
+    expect(connectedAccountsToBobAccount).toEqual([
+        [
+            {
+                id: ACCOUNT_3.id + '/' + ACCOUNT_3.originId,
+                status: {
+                    isMain: false
+                }
+            },
+            {
+                id: ACCOUNT_4.id + '/' + ACCOUNT_4.originId,
+                status: {
+                    isMain: false
+                }
+            },
+            {
+                id: ACCOUNT_1.id + '/' + ACCOUNT_1.originId,
+                status: {
+                    isMain: false
+                }
+            }
+        ],
+        [
+            {
+                id: ACCOUNT_5.id + '/' + ACCOUNT_5.originId,
+                status: {
+                    isMain: false
+                }
+            },
+            {
+                id: nearAliceId + '/' + nearOriginId,
+                status: {
+                    isMain: false
+                }
+            }
+        ],
+        [
+            {
+                id: ACCOUNT_2.id + '/' + ACCOUNT_2.originId,
+                status: {
+                    isMain: false
+                }
+            }
+        ]
+    ]);
+});
