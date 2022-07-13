@@ -924,3 +924,108 @@ test('merge 2 nets with main accouts', async () => {
         ]
     ]);
 });
+
+test('getting request status', async () => {
+    const requests_1 = await bobUseContract.getPendingRequests();
+    expect(requests_1).toEqual([]);
+
+    const id_1 = await bobUseContract.requestVerification({
+        args: {
+            firstAccountId: ACCOUNT_3.id,
+            firstOriginId: ACCOUNT_3.originId,
+            secondAccountId: nearBobId,
+            secondOriginId: nearOriginId,
+            isUnlink: true,
+            firstProofUrl: "https://example.com"
+        },
+        amount: "1000000000000000000000"
+    });
+    const id_2 = await bobUseContract.requestVerification({
+        args: {
+            firstAccountId: ACCOUNT_4.id,
+            firstOriginId: ACCOUNT_4.originId,
+            secondAccountId: nearBobId,
+            secondOriginId: nearOriginId,
+            isUnlink: true,
+            firstProofUrl: "https://example.com"
+        },
+        amount: "1000000000000000000000"
+    });
+    const requests_2 = await bobUseContract.getPendingRequests();
+    expect(requests_2.length).toBe(2);
+
+    await aliceUseContract.approveRequest({ args: { requestId: id_1 } });
+
+    const id_1Status = await bobUseContract.getRequestStatus({ id: id_1 });
+    const id_2Status = await bobUseContract.getRequestStatus({ id: id_2 });
+    const nonexistentStatus = await bobUseContract.getRequestStatus({ id: 9753 });
+
+    const requests_3 = await bobUseContract.getPendingRequests();
+    expect(requests_3.length).toBe(1);
+
+    expect(id_1Status).toBe(2);
+    expect(id_2Status).toBe(1);
+    expect(nonexistentStatus).toBe(0);
+
+    await aliceUseContract.rejectRequest({ args: { requestId: id_2 } });
+
+    const id_2NewStatus = await bobUseContract.getRequestStatus({ id: id_2 });
+    expect(id_2NewStatus).toBe(3);
+
+    const requests_4 = await bobUseContract.getPendingRequests();
+    expect(requests_4).toEqual([]);
+
+    const connectedAccountsToBobAccount = await aliceUseContract.getConnectedAccounts({
+        accountId: nearBobId,
+        originId: nearOriginId
+    });
+    console.log('*** connectedAccountsToBobAccount', connectedAccountsToBobAccount)
+    expect(connectedAccountsToBobAccount).toEqual([
+        [
+            {
+                id: ACCOUNT_4.id + '/' + ACCOUNT_4.originId,
+                status: {
+                    isMain: false
+                }
+            },
+            {
+                id: ACCOUNT_1.id + '/' + ACCOUNT_1.originId,
+                status: {
+                    isMain: false
+                }
+            }
+        ],
+        [
+            {
+                id: nearAliceId + '/' + nearOriginId,
+                status: {
+                    isMain: false
+                }
+            }
+        ],
+        [
+            {
+                id: ACCOUNT_2.id + '/' + ACCOUNT_2.originId,
+                status: {
+                    isMain: false
+                }
+            }
+        ]
+    ]);
+
+    const connectedAccountsToACCOUNT_3 = await aliceUseContract.getConnectedAccounts({
+        accountId: ACCOUNT_3.id,
+        originId: ACCOUNT_3.originId
+    });
+    console.log('*** connectedAccountsToACCOUNT_3', connectedAccountsToACCOUNT_3)
+    expect(connectedAccountsToACCOUNT_3).toEqual([
+        [
+            {
+                id: ACCOUNT_5.id + '/' + ACCOUNT_5.originId,
+                status: {
+                    isMain: false
+                }
+            }
+        ]
+    ]);
+});
