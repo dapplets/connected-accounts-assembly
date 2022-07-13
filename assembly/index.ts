@@ -235,10 +235,10 @@ export function getRequestStatus(id: u32): u8 {
   _active();
   if (!verificationRequests.containsIndex(id)) {
     return u8(0); // not found
-  } else if (pendingRequests.has(id)) {
-    return u8(1); // pending
   } else if (approvedRequests.has(id)) {
     return u8(2); // approved
+  } else if (pendingRequests.has(id)) {
+    return u8(1); // pending
   } else {
     return u8(3); // rejected
   }
