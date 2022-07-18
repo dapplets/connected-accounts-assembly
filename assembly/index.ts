@@ -421,6 +421,7 @@ export function unlinkAll(): void {
   _active();
   _onlyOwner();
   _connectedAccounts.clear();
+  _statuses.clear();
 }
 
 // Requests

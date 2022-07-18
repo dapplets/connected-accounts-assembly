@@ -30,7 +30,7 @@ async function start() {
         }
     );
 
-    const oracleAccount = await contract.getOracleAccount();
+    await contract.getOracleAccount();
 
     const pendingRequests = await contract.getPendingRequests();
 
@@ -47,6 +47,35 @@ async function start() {
 
     console.log(`Browser launched.`);
 
+    const verifyTwitter = async (verificationPackage) => {
+        const [twitterAccount, proofUrl, anotherAccount] = verificationPackage;
+        const [username] = twitterAccount.split('/');
+        const [anotherUsername] = anotherAccount.split('/');
+
+        if (proofUrl.indexOf('https://twitter.com') !== 0) {
+            console.log(`Invalid proof URL for Twitter: "${proofUrl}".`);
+            return false;
+        }
+        console.log(`Processing connection "${anotherAccount}" <=> "${twitterAccount}" with proof: ${proofUrl}`);
+
+        await page.goto(proofUrl, { waitUntil: 'networkidle2', timeout: 60000 });
+        let title = await page.title();
+        title = title.toLowerCase();
+        console.log(`Downloaded page "${title}".`);
+
+        return title.indexOf('@' + username) !== -1 && title.indexOf(anotherUsername) !== -1;
+    };
+
+    const verifyNear = (verificationPackage) => {
+        const [nearAccount, _, __, transactionSender] = verificationPackage;
+        return nearAccount === transactionSender;
+    };
+
+    const verify = {
+        twitter: verifyTwitter,
+        near: verifyNear,
+    }
+
     for (let i = 0; i < pendingRequests.length; i++) {
         try {
             const requestId = pendingRequests[i];
@@ -54,48 +83,42 @@ async function start() {
             console.log(`Verification ${i + 1} of ${pendingRequests.length} request. ID: ${requestId}`);
             const request = await contract.getVerificationRequest({ id: requestId });
 
-            let { nearAccount, externalAccount, isUnlink, proofUrl } = request;
+            const {
+                firstAccount,
+                secondAccount,
+                firstProofUrl,
+                secondProofUrl,
+                transactionSender
+            } = request;
 
-            
-            nearAccount = nearAccount.toLowerCase();
-            externalAccount = externalAccount.toLowerCase();
-            
-            const [socialNetwork, username] = externalAccount.split('/');
-            
-            if (socialNetwork === 'twitter') {
-                if (proofUrl.indexOf('https://twitter.com') !== 0) {
-                    console.log(`Invalid proof URL for Twitter: "${proofUrl}". Rejecting request...`);
-                    await contract.rejectRequest({ args: { requestId } });
-                    return;
+            const account_1 = firstAccount.toLowerCase();
+            const account_2 = secondAccount.toLowerCase();
+            const sender = transactionSender.toLowerCase();
+
+            const verificationPackages = [
+              [account_1, firstProofUrl, account_2, sender],
+              [account_2, secondProofUrl, account_1, sender]
+            ];
+
+            let verifications = 0;
+            for (const verificationPackage of verificationPackages) {
+                const [_, origin] = verificationPackage[0].split('/');
+                if (!Object.prototype.hasOwnProperty.call(verify, origin)) {
+                    console.log(`Unsupported social network: "${socialNetwork}".`);
+                    break;
                 }
-
-                console.log(`${isUnlink ? "Unlink" : "Link"} "${nearAccount}" <=> "${externalAccount}" with proof: ${proofUrl}`);
-
-                await page.goto(request.proofUrl, { waitUntil: 'networkidle2' });
-                let title = await page.title();
-                title = title.toLowerCase();
-
-                console.log(`Downloaded page "${title}".`);
-
-                if (!isUnlink) {
-                    if (title.indexOf('@' + username) !== -1 && title.indexOf(nearAccount) !== -1) {
-                        console.log(`Approving request...`);
-                        await contract.approveRequest({ args: { requestId } });
-                    } else {
-                        console.log(`Rejecting request...`);
-                        await contract.rejectRequest({ args: { requestId } });
-                    }
-                } else {
-                    if (title.indexOf('@' + username) !== -1 && title.indexOf(nearAccount) === -1) {
-                        console.log(`Approving request...`);
-                        await contract.approveRequest({ args: { requestId } });
-                    } else {
-                        console.log(`Rejecting request...`);
-                        await contract.rejectRequest({ args: { requestId } });
-                    }
+                let isVerified = verify[origin](verificationPackage);
+                if (isVerified instanceof Promise) {
+                  isVerified = await isVerified;
                 }
+                if (isVerified) verifications++;
+            }
+
+            if (verifications === 2) {
+                console.log(`Approving request...`);
+                await contract.approveRequest({ args: { requestId } });
             } else {
-                console.log(`Unsupported social network: "${socialNetwork}". Rejecting request...`);
+                console.log(`Rejecting request...`);
                 await contract.rejectRequest({ args: { requestId } });
             }
         } catch (e) {
