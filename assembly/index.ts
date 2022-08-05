@@ -260,12 +260,13 @@ export function changeStatus(
     _getStatus(requestGlobalId) !== isMain,
     'The new state is equal to the previous one'
   );
+  let connectedAccountsIds: string[][] = [[]];
   if (requestGlobalId != senderGlobalId) {
     assert(
       _connectedAccounts.contains(senderGlobalId),
       'Transaction sender does not have connected accounts. Only owner can change status.'
     );
-    const connectedAccountsIds = _getIdsDeep(-1, [senderGlobalId], [senderGlobalId]);
+    connectedAccountsIds = _getIdsDeep(-1, [senderGlobalId], [senderGlobalId]);
     const connectedAccountsGIdsPlain: AccountGlobalId[] = [];
     for (let i = 0; i < connectedAccountsIds.length; i++) {
       for (let k = 0; k < connectedAccountsIds[i].length; k++) {
@@ -279,17 +280,21 @@ export function changeStatus(
   }
   if (isMain) {
     if (_connectedAccounts.contains(senderGlobalId)) {
-      const connectedAccountsGIds = _connectedAccounts.get(senderGlobalId);
-      if (connectedAccountsGIds) {
-        const ids = connectedAccountsGIds.values();
-        ids.push(senderGlobalId);
-        ids.forEach((id: string) => {
-          const a = _statuses.get(id);
-          if (a && a.isMain) {
-            _statuses.set(id, new AccountState(false));
-          }
-        });
+      const senderStatus = _statuses.get(senderGlobalId);
+      if (senderStatus && senderStatus.isMain) {
+        _statuses.set(senderGlobalId, new AccountState(false));
       }
+      if (connectedAccountsIds[0].length === 0) {
+        connectedAccountsIds = _getIdsDeep(-1, [senderGlobalId], [senderGlobalId]);
+      }
+      for (let i = 0; i < connectedAccountsIds.length; i++) {
+        for (let k = 0; k < connectedAccountsIds[i].length; k++) {
+          const a = _statuses.get(connectedAccountsIds[i][k]);
+          if (a && a.isMain) {
+            _statuses.set(connectedAccountsIds[i][k], new AccountState(false));
+          }
+        }
+      };
     }
   }
   _statuses.set(requestGlobalId, new AccountState(isMain));

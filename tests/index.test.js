@@ -1029,3 +1029,138 @@ test('getting request status', async () => {
         ]
     ]);
 });
+
+test('merge 2 nets with one main accout and set the main account in the different part', async () => {
+    await bobUseContract.changeStatus({
+        args: {
+            accountId: ACCOUNT_2.id,
+            originId: ACCOUNT_2.originId,
+            isMain: true
+        }
+    });
+
+    const requestId = await bobUseContract.requestVerification({
+        args: {
+            firstAccountId: nearBobId,
+            firstOriginId: nearOriginId,
+            secondAccountId: ACCOUNT_3.id,
+            secondOriginId: ACCOUNT_3.originId,
+            isUnlink: false,
+            firstProofUrl: "https://example.com"
+        },
+        amount: "1000000000000000000000"
+    });
+    await aliceUseContract.approveRequest({ args: { requestId } });
+
+    const ca1 = await aliceUseContract.getConnectedAccounts({
+        accountId: nearBobId,
+        originId: nearOriginId
+    });
+
+    console.log('*** connectedAccountsToBobAccount', ca1)
+
+    expect(ca1).toEqual([
+        [
+            {
+                id: ACCOUNT_4.id + '/' + ACCOUNT_4.originId,
+                status: {
+                    isMain: false
+                }
+            },
+            {
+                id: ACCOUNT_1.id + '/' + ACCOUNT_1.originId,
+                status: {
+                    isMain: false
+                }
+            },
+            {
+                id: ACCOUNT_3.id + '/' + ACCOUNT_3.originId,
+                status: {
+                    isMain: false
+                }
+            }
+        ],
+        [
+            {
+                id: nearAliceId + '/' + nearOriginId,
+                status: {
+                    isMain: false
+                }
+            },
+            {
+                id: ACCOUNT_5.id + '/' + ACCOUNT_5.originId,
+                status: {
+                    isMain: false
+                }
+            }
+        ],
+        [
+            {
+                id: ACCOUNT_2.id + '/' + ACCOUNT_2.originId,
+                status: {
+                    isMain: true
+                }
+            }
+        ]
+    ]);
+    
+    await bobUseContract.changeStatus({
+        args: {
+            accountId: ACCOUNT_5.id,
+            originId: ACCOUNT_5.originId,
+            isMain: true
+        }
+    });
+
+    const ca2 = await aliceUseContract.getConnectedAccounts({
+        accountId: nearBobId,
+        originId: nearOriginId
+    });
+
+    console.log('*** connectedAccountsToBobAccount', ca2)
+
+    expect(ca2).toEqual([
+        [
+            {
+                id: ACCOUNT_4.id + '/' + ACCOUNT_4.originId,
+                status: {
+                    isMain: false
+                }
+            },
+            {
+                id: ACCOUNT_1.id + '/' + ACCOUNT_1.originId,
+                status: {
+                    isMain: false
+                }
+            },
+            {
+                id: ACCOUNT_3.id + '/' + ACCOUNT_3.originId,
+                status: {
+                    isMain: false
+                }
+            }
+        ],
+        [
+            {
+                id: nearAliceId + '/' + nearOriginId,
+                status: {
+                    isMain: false
+                }
+            },
+            {
+                id: ACCOUNT_5.id + '/' + ACCOUNT_5.originId,
+                status: {
+                    isMain: true
+                }
+            }
+        ],
+        [
+            {
+                id: ACCOUNT_2.id + '/' + ACCOUNT_2.originId,
+                status: {
+                    isMain: false
+                }
+            }
+        ]
+    ]);
+});
