@@ -66,6 +66,25 @@ async function start() {
         return title.indexOf('@' + username) !== -1 && title.indexOf(anotherUsername) !== -1;
     };
 
+    const verifyGitHub = async (verificationPackage) => {
+        const [gitHubAccount, proofUrl, anotherAccount] = verificationPackage;
+        const [username] = gitHubAccount.split('/');
+        const [anotherUsername] = anotherAccount.split('/');
+
+        if (proofUrl.indexOf('https://github.com') !== 0) {
+            console.log(`Invalid proof URL for Twitter: "${proofUrl}".`);
+            return false;
+        }
+        console.log(`Processing connection "${anotherAccount}" <=> "${gitHubAccount}" with proof: ${proofUrl}`);
+
+        await page.goto(proofUrl, { waitUntil: 'networkidle2', timeout: 60000 });
+        let title = await page.title();
+        title = title.toLowerCase();
+        console.log(`Downloaded page "${title}".`);
+
+        return title.indexOf(username.toLowerCase()) !== -1 && title.indexOf(anotherUsername.toLowerCase()) !== -1;
+    };
+
     const verifyNear = (verificationPackage) => {
         const [nearAccount, _, __, transactionSender] = verificationPackage;
         return nearAccount === transactionSender;
@@ -73,6 +92,7 @@ async function start() {
 
     const verify = {
         twitter: verifyTwitter,
+        github: verifyGitHub,
         near: verifyNear,
     }
 
