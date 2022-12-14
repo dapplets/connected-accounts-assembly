@@ -9,14 +9,9 @@ import {
   PersistentVector,
 } from "near-sdk-core";
 
-import {
-  Account,
-  AccountGlobalId,
-  AccountState,
-  VerificationRequest
-} from './modules';
+import { Account, AccountGlobalId, AccountState, VerificationRequest } from "./modules";
 
-const NEAR_NETWORK = 'testnet'; //      !!! NETWORK TYPE !!!
+const NEAR_NETWORK = "testnet"; //      !!! NETWORK TYPE !!!
 
 type NearAccountId = string; //  example: user.near, user.testnet
 
@@ -29,9 +24,9 @@ const ACTIVE_CONTRACT_KEY = "c";
 
 // Identity
 
-const _connectedAccounts = new PersistentUnorderedMap<AccountGlobalId, Set<AccountGlobalId>>("d"); 
+const _connectedAccounts = new PersistentUnorderedMap<AccountGlobalId, Set<AccountGlobalId>>("d");
 
-const _statuses = new PersistentUnorderedMap<AccountGlobalId, AccountState>("e"); 
+const _statuses = new PersistentUnorderedMap<AccountGlobalId, AccountState>("e");
 
 const ORACLE_ACCOUNT_KEY = "f";
 const MIN_STAKE_AMOUNT_KEY = "g";
@@ -44,15 +39,8 @@ const approvedRequests = new PersistentSet<u32>("j");
 
 // INITIALIZATION
 
-export function initialize(
-  ownerAccountId: NearAccountId,
-  oracleAccountId: NearAccountId,
-  minStakeAmount: u128,
-): void {
-  assert(
-    storage.getPrimitive<bool>(INIT_CONTRACT_KEY, false) == false,
-    "Contract already initialized"
-  );
+export function initialize(ownerAccountId: NearAccountId, oracleAccountId: NearAccountId, minStakeAmount: u128): void {
+  assert(storage.getPrimitive<bool>(INIT_CONTRACT_KEY, false) == false, "Contract already initialized");
 
   storage.set<NearAccountId>(OWNER_ACCOUNT_KEY, ownerAccountId);
   storage.set<NearAccountId>(ORACLE_ACCOUNT_KEY, oracleAccountId);
@@ -86,7 +74,7 @@ function _getStatus(id: AccountGlobalId): bool {
 
 export function getStatus(accountId: string, originId: string): bool {
   _active();
-  const accountGlobalId: AccountGlobalId = accountId + '/' + originId;
+  const accountGlobalId: AccountGlobalId = accountId + "/" + originId;
   return _getStatus(accountGlobalId);
 }
 
@@ -134,11 +122,7 @@ function _getAccountsDeep(
   globalIds: AccountGlobalId[],
   allAccountIdsPlain: AccountGlobalId[]
 ): Account[][] {
-  const ids = _getIdsDeep(
-    closeness,
-    globalIds,
-    allAccountIdsPlain
-  );
+  const ids = _getIdsDeep(closeness, globalIds, allAccountIdsPlain);
   const accounts: Account[][] = [];
   for (let i = 0; i < ids.length; i++) {
     const accLayer: Account[] = [];
@@ -150,13 +134,9 @@ function _getAccountsDeep(
   return accounts;
 }
 
-export function getConnectedAccounts(
-  accountId: string,
-  originId: string,
-  closeness: i8 = -1
-): Account[][] | null {
+export function getConnectedAccounts(accountId: string, originId: string, closeness: i8 = -1): Account[][] | null {
   _active();
-  const accountGlobalId = accountId + '/' + originId;
+  const accountGlobalId = accountId + "/" + originId;
   if (closeness === 1) {
     const ids = _getIds(accountGlobalId);
     const accounts: Account[] = [];
@@ -192,12 +172,9 @@ function _getMainAccountDeep(
   }
 }
 
-export function getMainAccount(
-  accountId: string,
-  originId: string,
-): AccountGlobalId | null {
+export function getMainAccount(accountId: string, originId: string): AccountGlobalId | null {
   _active();
-  const accountGlobalId = accountId + '/' + originId;
+  const accountGlobalId = accountId + "/" + originId;
   const currentIdState = _getStatus(accountGlobalId);
   if (currentIdState) return accountGlobalId;
   return _getMainAccountDeep([accountGlobalId], [accountGlobalId]);
@@ -248,23 +225,16 @@ export function getRequestStatus(id: u32): u8 {
 
 // Identity
 
-export function changeStatus(
-  accountId: string,
-  originId: string,
-  isMain: bool
-): void {
+export function changeStatus(accountId: string, originId: string, isMain: bool): void {
   _active();
-  const requestGlobalId = accountId + '/' + originId;
-  const senderGlobalId = Context.sender + '/' + 'near' + '/' + NEAR_NETWORK;
-  assert(
-    _getStatus(requestGlobalId) !== isMain,
-    'The new state is equal to the previous one'
-  );
+  const requestGlobalId = accountId + "/" + originId;
+  const senderGlobalId = Context.sender + "/" + "near" + "/" + NEAR_NETWORK;
+  assert(_getStatus(requestGlobalId) !== isMain, "The new state is equal to the previous one");
   let connectedAccountsIds: string[][] = [[]];
   if (requestGlobalId != senderGlobalId) {
     assert(
       _connectedAccounts.contains(senderGlobalId),
-      'Transaction sender does not have connected accounts. Only owner can change status.'
+      "Transaction sender does not have connected accounts. Only owner can change status."
     );
     connectedAccountsIds = _getIdsDeep(-1, [senderGlobalId], [senderGlobalId]);
     const connectedAccountsGIdsPlain: AccountGlobalId[] = [];
@@ -272,10 +242,10 @@ export function changeStatus(
       for (let k = 0; k < connectedAccountsIds[i].length; k++) {
         connectedAccountsGIdsPlain.push(connectedAccountsIds[i][k]);
       }
-    };
+    }
     assert(
       connectedAccountsGIdsPlain.includes(requestGlobalId),
-      'Requested account is not in the transaction senders net. Only owner can change status.'
+      "Requested account is not in the transaction senders net. Only owner can change status."
     );
   }
   if (isMain) {
@@ -294,7 +264,7 @@ export function changeStatus(
             _statuses.set(connectedAccountsIds[i][k], new AccountState(false));
           }
         }
-      };
+      }
     }
   }
   _statuses.set(requestGlobalId, new AccountState(isMain));
@@ -310,10 +280,7 @@ export function approveRequest(requestId: u32): void {
   const secondAccount = req.secondAccount;
 
   if (req.isUnlink) {
-    assert(
-      _connectedAccounts.contains(firstAccount),
-      "Account " + firstAccount + " not found."
-    );
+    assert(_connectedAccounts.contains(firstAccount), "Account " + firstAccount + " not found.");
     const connected1Accounts = _connectedAccounts.get(firstAccount);
     assert(
       connected1Accounts!.has(secondAccount),
@@ -321,10 +288,7 @@ export function approveRequest(requestId: u32): void {
     );
     connected1Accounts!.delete(secondAccount);
 
-    assert(
-      _connectedAccounts.contains(secondAccount),
-      "Account " + secondAccount + " not found."
-    );
+    assert(_connectedAccounts.contains(secondAccount), "Account " + secondAccount + " not found.");
     const connected2Accounts = _connectedAccounts.get(secondAccount);
     assert(
       connected2Accounts!.has(firstAccount),
@@ -371,7 +335,7 @@ export function approveRequest(requestId: u32): void {
       for (let k = 0; k < connectedAccounts[i].length; k++) {
         connectedAccountsPlain.push(connectedAccounts[i][k]);
       }
-    };
+    }
     connectedAccountsPlain.push(new Account(firstAccount, new AccountState(_getStatus(firstAccount))));
 
     let mainConnectedAccounts: AccountGlobalId[] = [];
@@ -437,8 +401,8 @@ export function requestVerification(
   secondAccountId: string,
   secondOriginId: string,
   isUnlink: boolean,
-  firstProofUrl: string = '',
-  secondProofUrl: string = '',
+  firstProofUrl: string = "",
+  secondProofUrl: string = ""
 ): u32 {
   _active();
   assert(Context.sender == Context.predecessor, "Cross-contract calls is not allowed");
@@ -447,11 +411,25 @@ export function requestVerification(
     "Insufficient stake amount"
   );
 
-  const senderOrigin = 'near' + '/' + NEAR_NETWORK
-  const senderAccount = Context.sender + '/' + senderOrigin;
+  const senderOrigin = "near" + "/" + NEAR_NETWORK;
+  const senderAccount = Context.sender + "/" + senderOrigin;
 
-  const firstAccountGlobalId = firstAccountId + '/' + firstOriginId;
-  const secondAccountGlobalId = secondAccountId + '/' + secondOriginId;
+  const firstAccountGlobalId = firstAccountId + "/" + firstOriginId;
+  const secondAccountGlobalId = secondAccountId + "/" + secondOriginId;
+
+  // Check if there are pending requests with the same two accounts
+  const a = getPendingRequests();
+  for (let i = 0; i < a.length; i++) {
+    const b = getVerificationRequest(a[i]);
+    const first = b!.firstAccount;
+    const second = b!.secondAccount;
+    assert(
+      !(first == firstAccountGlobalId && second == secondAccountGlobalId) &&
+        !(first == secondAccountGlobalId && second == firstAccountGlobalId),
+      "There is a pending request with the same two accounts. Try again later."
+    );
+  }
+  //
 
   if (!_statuses.contains(firstAccountGlobalId)) {
     _statuses.set(firstAccountGlobalId, new AccountState());
@@ -499,14 +477,16 @@ export function requestVerification(
     }
   }
 
-  const id = verificationRequests.push(new VerificationRequest(
-    firstAccountGlobalId,
-    secondAccountGlobalId,
-    isUnlink,
-    firstProofUrl,
-    secondProofUrl,
-    senderAccount
-  ));
+  const id = verificationRequests.push(
+    new VerificationRequest(
+      firstAccountGlobalId,
+      secondAccountGlobalId,
+      isUnlink,
+      firstProofUrl,
+      secondProofUrl,
+      senderAccount
+    )
+  );
   pendingRequests.add(id);
 
   const oracleAccount = storage.get<NearAccountId>(ORACLE_ACCOUNT_KEY)!;

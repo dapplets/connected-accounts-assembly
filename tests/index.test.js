@@ -1,4 +1,4 @@
-import { expect } from '@jest/globals';
+import { expect, jest, test } from '@jest/globals';
 import 'regenerator-runtime/runtime';
 const nearAPI = require("near-api-js");
 const BN = require("bn.js");
@@ -1117,7 +1117,7 @@ test('merge 2 nets with one main accout and set the main account in the differen
         originId: nearOriginId
     });
 
-    console.log('*** connectedAccountsToBobAccount', ca2)
+    console.log('*** connectedAccountsToAliceAccount', ca2)
 
     expect(ca2).toEqual([
         [
@@ -1163,4 +1163,47 @@ test('merge 2 nets with one main accout and set the main account in the differen
             }
         ]
     ]);
+});
+
+test('two requests with the same accounts', async () => {
+  await bobUseContract.requestVerification({
+    args: {
+      firstAccountId: nearBobId,
+      firstOriginId: nearOriginId,
+      secondAccountId: ACCOUNT_1.id,
+      secondOriginId: ACCOUNT_1.originId,
+      isUnlink: true,
+      firstProofUrl: "https://example.com"
+    },
+    amount: "1000000000000000000000"
+  });
+
+  // const pendingRequests = await bobUseContract.getPendingRequests()
+  // const a = pendingRequests.map((req) => bobUseContract.getVerificationRequest({ id: req }))
+  // const b = await Promise.all(a)
+  // console.log('PendingRequests', b)
+
+  await expect(() => bobUseContract.requestVerification({
+    args: {
+      firstAccountId: nearBobId,
+      firstOriginId: nearOriginId,
+      secondAccountId: ACCOUNT_1.id,
+      secondOriginId: ACCOUNT_1.originId,
+      isUnlink: true,
+      firstProofUrl: "https://example.com"
+    },
+    amount: "1000000000000000000000"
+  })).rejects.toThrow('There is a pending request with the same two accounts. Try again later')
+
+  await expect(() => bobUseContract.requestVerification({
+    args: {
+      firstAccountId: nearBobId,
+      firstOriginId: nearOriginId,
+      secondAccountId: ACCOUNT_1.id,
+      secondOriginId: ACCOUNT_1.originId,
+      isUnlink: false,
+      firstProofUrl: "https://example.com"
+    },
+    amount: "1000000000000000000000"
+  })).rejects.toThrow('There is a pending request with the same two accounts. Try again later')
 });
