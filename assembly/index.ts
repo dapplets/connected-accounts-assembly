@@ -299,6 +299,20 @@ export function approveRequest(requestId: u32): void {
     _connectedAccounts.set(firstAccount, connected1Accounts!);
     _connectedAccounts.set(secondAccount, connected2Accounts!);
 
+    if (connected1Accounts!.size == 0) {
+      const status = _getStatus(firstAccount);
+      if (status) {
+        _statuses.set(firstAccount, new AccountState());
+      }
+    }
+
+    if (connected2Accounts!.size == 0) {
+      const status = _getStatus(secondAccount);
+      if (status) {
+        _statuses.set(secondAccount, new AccountState());
+      }
+    }
+
     logging.log("Accounts " + firstAccount + " and " + secondAccount + " are unlinked");
   } else {
     const connected1Accounts = _connectedAccounts.get(firstAccount);

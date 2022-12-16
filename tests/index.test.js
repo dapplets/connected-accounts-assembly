@@ -1166,7 +1166,7 @@ test('merge 2 nets with one main accout and set the main account in the differen
 });
 
 test('two requests with the same accounts', async () => {
-  await bobUseContract.requestVerification({
+  const requestId = await bobUseContract.requestVerification({
     args: {
       firstAccountId: nearBobId,
       firstOriginId: nearOriginId,
@@ -1206,4 +1206,62 @@ test('two requests with the same accounts', async () => {
     },
     amount: "1000000000000000000000"
   })).rejects.toThrow('There is a pending request with the same two accounts. Try again later')
+
+  await aliceUseContract.rejectRequest({ args: { requestId } });
 });
+
+test('single account cannot have main status', async () => {
+  const mainAccountId = await aliceUseContract.getMainAccount({
+      accountId: nearAliceId,
+      originId: nearOriginId
+  });
+  console.log('mainAccountId', mainAccountId)
+  expect(mainAccountId).toBe(ACCOUNT_5.id + '/' + ACCOUNT_5.originId);
+
+  const ACCOUNT_5Status1 = await aliceUseContract.getStatus({
+      accountId: ACCOUNT_5.id,
+      originId: ACCOUNT_5.originId
+  });
+  expect(ACCOUNT_5Status1).toBe(true);
+
+  const requestId = await aliceUseContract.requestVerification({
+    args: {
+      firstAccountId: ACCOUNT_3.id,
+      firstOriginId: ACCOUNT_3.originId,
+      secondAccountId: ACCOUNT_5.id,
+      secondOriginId: ACCOUNT_5.originId,
+      isUnlink: true,
+      firstProofUrl: "https://example.com"
+    },
+    amount: "1000000000000000000000"
+  });
+
+  await aliceUseContract.approveRequest({ args: { requestId } });
+
+  const ACCOUNT_5Status2 = await aliceUseContract.getStatus({
+      accountId: ACCOUNT_5.id,
+      originId: ACCOUNT_5.originId
+  });
+  expect(ACCOUNT_5Status2).toBe(false);
+
+  const requestId2 = await aliceUseContract.requestVerification({
+    args: {
+      firstAccountId: ACCOUNT_3.id,
+      firstOriginId: ACCOUNT_3.originId,
+      secondAccountId: ACCOUNT_5.id,
+      secondOriginId: ACCOUNT_5.originId,
+      isUnlink: false,
+      firstProofUrl: "https://example.com"
+    },
+    amount: "1000000000000000000000"
+  });
+
+  await aliceUseContract.approveRequest({ args: { requestId: requestId2 } });
+
+  const newMainAccountId = await aliceUseContract.getMainAccount({
+      accountId: nearAliceId,
+      originId: nearOriginId
+  });
+  console.log('newMainAccountId', newMainAccountId)
+  expect(newMainAccountId).toBe(null);
+})
