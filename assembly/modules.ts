@@ -36,7 +36,7 @@ class LinkingAccounts {
 
 @nearBindgen
 class Signature {
-  constructor(public sig: u64, public v: u8, public mc: boolean) {}
+  constructor(public sig: string, public v: u8, public mc: boolean) {}
 }
 
 @nearBindgen
