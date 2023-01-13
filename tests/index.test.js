@@ -3,6 +3,7 @@ import 'regenerator-runtime/runtime';
 const nearAPI = require("near-api-js");
 const BN = require("bn.js");
 const fs = require("fs").promises;
+import * as ethers from "ethers";
 
 jest.setTimeout(30000);
 
@@ -179,6 +180,7 @@ test('creates request', async () => {
             firstOriginId: ACCOUNT_1.originId,
             secondAccountId: nearAliceId,
             secondOriginId: nearOriginId,
+            walletProof: null,
             isUnlink: false,
             firstProofUrl: "https://example.com"
         },
@@ -273,6 +275,7 @@ test('approve the unlinking request, get the request approve and unconnect accou
             secondAccountId: nearAliceId,
             secondOriginId: nearOriginId,
             isUnlink: true,
+            walletProof: null,
             firstProofUrl: "https://example.com"
         },
         amount: "1000000000000000000000"
@@ -309,6 +312,7 @@ test('approve two linking requests, get the requests approves and connect accoun
             secondAccountId: nearAliceId,
             secondOriginId: nearOriginId,
             isUnlink: false,
+            walletProof: null,
             firstProofUrl: "https://example.com"
         },
         amount: "1000000000000000000000"
@@ -321,6 +325,7 @@ test('approve two linking requests, get the requests approves and connect accoun
             secondAccountId: nearBobId,
             secondOriginId: nearOriginId,
             isUnlink: false,
+            walletProof: null,
             firstProofUrl: "https://example.com"
         },
         amount: "1000000000000000000000"
@@ -472,6 +477,7 @@ test('recursively getting the entire network of connected accounts', async () =>
             secondAccountId: nearAliceId,
             secondOriginId: nearOriginId,
             isUnlink: false,
+            walletProof: null,
             firstProofUrl: "https://example.com"
         },
         amount: "1000000000000000000000"
@@ -484,6 +490,7 @@ test('recursively getting the entire network of connected accounts', async () =>
             secondAccountId: nearBobId,
             secondOriginId: nearOriginId,
             isUnlink: false,
+            walletProof: null,
             firstProofUrl: "https://example.com"
         },
         amount: "1000000000000000000000"
@@ -496,6 +503,7 @@ test('recursively getting the entire network of connected accounts', async () =>
             secondAccountId: nearBobId,
             secondOriginId: nearOriginId,
             isUnlink: false,
+            walletProof: null,
             firstProofUrl: "https://example.com"
         },
         amount: "1000000000000000000000"
@@ -664,6 +672,7 @@ test('merge 2 nets with main accouts', async () => {
             secondAccountId: nearBobId,
             secondOriginId: nearOriginId,
             isUnlink: true,
+            walletProof: null,
             firstProofUrl: "https://example.com"
         },
         amount: "1000000000000000000000"
@@ -727,6 +736,7 @@ test('merge 2 nets with main accouts', async () => {
             secondAccountId: ACCOUNT_3.id,
             secondOriginId: ACCOUNT_3.originId,
             isUnlink: false,
+            walletProof: null,
             firstProofUrl: "https://example.com"
         },
         amount: "1000000000000000000000"
@@ -814,6 +824,7 @@ test('merge 2 nets with main accouts', async () => {
             secondAccountId: ACCOUNT_1.id,
             secondOriginId: ACCOUNT_1.originId,
             isUnlink: false,
+            walletProof: null,
             firstProofUrl: "https://example.com"
         },
         amount: "1000000000000000000000"
@@ -936,6 +947,7 @@ test('getting request status', async () => {
             secondAccountId: nearBobId,
             secondOriginId: nearOriginId,
             isUnlink: true,
+            walletProof: null,
             firstProofUrl: "https://example.com"
         },
         amount: "1000000000000000000000"
@@ -947,6 +959,7 @@ test('getting request status', async () => {
             secondAccountId: nearBobId,
             secondOriginId: nearOriginId,
             isUnlink: true,
+            walletProof: null,
             firstProofUrl: "https://example.com"
         },
         amount: "1000000000000000000000"
@@ -1046,6 +1059,7 @@ test('merge 2 nets with one main accout and set the main account in the differen
             secondAccountId: ACCOUNT_3.id,
             secondOriginId: ACCOUNT_3.originId,
             isUnlink: false,
+            walletProof: null,
             firstProofUrl: "https://example.com"
         },
         amount: "1000000000000000000000"
@@ -1117,7 +1131,7 @@ test('merge 2 nets with one main accout and set the main account in the differen
         originId: nearOriginId
     });
 
-    console.log('*** connectedAccountsToAliceAccount', ca2)
+    console.log('*** connectedAccountsToBobAccount', ca2)
 
     expect(ca2).toEqual([
         [
@@ -1166,102 +1180,250 @@ test('merge 2 nets with one main accout and set the main account in the differen
 });
 
 test('two requests with the same accounts', async () => {
-  const requestId = await bobUseContract.requestVerification({
-    args: {
-      firstAccountId: nearBobId,
-      firstOriginId: nearOriginId,
-      secondAccountId: ACCOUNT_1.id,
-      secondOriginId: ACCOUNT_1.originId,
-      isUnlink: true,
-      firstProofUrl: "https://example.com"
-    },
-    amount: "1000000000000000000000"
-  });
+    const requestId = await bobUseContract.requestVerification({
+        args: {
+            firstAccountId: nearBobId,
+            firstOriginId: nearOriginId,
+            secondAccountId: ACCOUNT_1.id,
+            secondOriginId: ACCOUNT_1.originId,
+            isUnlink: true,
+            walletProof: null,
+            firstProofUrl: "https://example.com"
+        },
+        amount: "1000000000000000000000"
+    });
 
-  // const pendingRequests = await bobUseContract.getPendingRequests()
-  // const a = pendingRequests.map((req) => bobUseContract.getVerificationRequest({ id: req }))
-  // const b = await Promise.all(a)
-  // console.log('PendingRequests', b)
+    // const pendingRequests = await bobUseContract.getPendingRequests()
+    // const a = pendingRequests.map((req) => bobUseContract.getVerificationRequest({ id: req }))
+    // const b = await Promise.all(a)
+    // console.log('PendingRequests', b)
 
-  await expect(() => bobUseContract.requestVerification({
-    args: {
-      firstAccountId: nearBobId,
-      firstOriginId: nearOriginId,
-      secondAccountId: ACCOUNT_1.id,
-      secondOriginId: ACCOUNT_1.originId,
-      isUnlink: true,
-      firstProofUrl: "https://example.com"
-    },
-    amount: "1000000000000000000000"
-  })).rejects.toThrow('There is a pending request with the same two accounts. Try again later')
+    await expect(() => bobUseContract.requestVerification({
+        args: {
+            firstAccountId: nearBobId,
+            firstOriginId: nearOriginId,
+            secondAccountId: ACCOUNT_1.id,
+            secondOriginId: ACCOUNT_1.originId,
+            isUnlink: true,
+            walletProof: null,
+            firstProofUrl: "https://example.com"
+        },
+        amount: "1000000000000000000000"
+    })).rejects.toThrow('There is a pending request with the same two accounts. Try again later')
 
-  await expect(() => bobUseContract.requestVerification({
-    args: {
-      firstAccountId: nearBobId,
-      firstOriginId: nearOriginId,
-      secondAccountId: ACCOUNT_1.id,
-      secondOriginId: ACCOUNT_1.originId,
-      isUnlink: false,
-      firstProofUrl: "https://example.com"
-    },
-    amount: "1000000000000000000000"
-  })).rejects.toThrow('There is a pending request with the same two accounts. Try again later')
+    await expect(() => bobUseContract.requestVerification({
+        args: {
+            firstAccountId: nearBobId,
+            firstOriginId: nearOriginId,
+            secondAccountId: ACCOUNT_1.id,
+            secondOriginId: ACCOUNT_1.originId,
+            isUnlink: false,
+            walletProof: null,
+            firstProofUrl: "https://example.com"
+        },
+        amount: "1000000000000000000000"
+    })).rejects.toThrow('There is a pending request with the same two accounts. Try again later')
 
-  await aliceUseContract.rejectRequest({ args: { requestId } });
+    await aliceUseContract.rejectRequest({ args: { requestId } });
 });
 
 test('single account cannot have main status', async () => {
-  const mainAccountId = await aliceUseContract.getMainAccount({
-      accountId: nearAliceId,
-      originId: nearOriginId
-  });
-  console.log('mainAccountId', mainAccountId)
-  expect(mainAccountId).toBe(ACCOUNT_5.id + '/' + ACCOUNT_5.originId);
+    const mainAccountId = await aliceUseContract.getMainAccount({
+        accountId: nearAliceId,
+        originId: nearOriginId
+    });
+    console.log('mainAccountId', mainAccountId)
+    expect(mainAccountId).toBe(ACCOUNT_5.id + '/' + ACCOUNT_5.originId);
 
-  const ACCOUNT_5Status1 = await aliceUseContract.getStatus({
-      accountId: ACCOUNT_5.id,
-      originId: ACCOUNT_5.originId
-  });
-  expect(ACCOUNT_5Status1).toBe(true);
+    const ACCOUNT_5Status1 = await aliceUseContract.getStatus({
+        accountId: ACCOUNT_5.id,
+        originId: ACCOUNT_5.originId
+    });
+    expect(ACCOUNT_5Status1).toBe(true);
 
-  const requestId = await aliceUseContract.requestVerification({
-    args: {
-      firstAccountId: ACCOUNT_3.id,
-      firstOriginId: ACCOUNT_3.originId,
-      secondAccountId: ACCOUNT_5.id,
-      secondOriginId: ACCOUNT_5.originId,
-      isUnlink: true,
-      firstProofUrl: "https://example.com"
-    },
-    amount: "1000000000000000000000"
-  });
+    const requestId = await aliceUseContract.requestVerification({
+        args: {
+            firstAccountId: ACCOUNT_3.id,
+            firstOriginId: ACCOUNT_3.originId,
+            secondAccountId: ACCOUNT_5.id,
+            secondOriginId: ACCOUNT_5.originId,
+            isUnlink: true,
+            walletProof: null,
+            firstProofUrl: "https://example.com"
+        },
+        amount: "1000000000000000000000"
+    });
 
-  await aliceUseContract.approveRequest({ args: { requestId } });
+    await aliceUseContract.approveRequest({ args: { requestId } });
 
-  const ACCOUNT_5Status2 = await aliceUseContract.getStatus({
-      accountId: ACCOUNT_5.id,
-      originId: ACCOUNT_5.originId
-  });
-  expect(ACCOUNT_5Status2).toBe(false);
+    const ACCOUNT_5Status2 = await aliceUseContract.getStatus({
+        accountId: ACCOUNT_5.id,
+        originId: ACCOUNT_5.originId
+    });
+    expect(ACCOUNT_5Status2).toBe(false);
 
-  const requestId2 = await aliceUseContract.requestVerification({
-    args: {
-      firstAccountId: ACCOUNT_3.id,
-      firstOriginId: ACCOUNT_3.originId,
-      secondAccountId: ACCOUNT_5.id,
-      secondOriginId: ACCOUNT_5.originId,
-      isUnlink: false,
-      firstProofUrl: "https://example.com"
-    },
-    amount: "1000000000000000000000"
-  });
+    const requestId2 = await aliceUseContract.requestVerification({
+        args: {
+            firstAccountId: ACCOUNT_3.id,
+            firstOriginId: ACCOUNT_3.originId,
+            secondAccountId: ACCOUNT_5.id,
+            secondOriginId: ACCOUNT_5.originId,
+            isUnlink: false,
+            walletProof: null,
+            firstProofUrl: "https://example.com"
+        },
+        amount: "1000000000000000000000"
+    });
 
-  await aliceUseContract.approveRequest({ args: { requestId: requestId2 } });
+    await aliceUseContract.approveRequest({ args: { requestId: requestId2 } });
 
-  const newMainAccountId = await aliceUseContract.getMainAccount({
-      accountId: nearAliceId,
-      originId: nearOriginId
-  });
-  console.log('newMainAccountId', newMainAccountId)
-  expect(newMainAccountId).toBe(null);
+    const newMainAccountId = await aliceUseContract.getMainAccount({
+        accountId: nearAliceId,
+        originId: nearOriginId
+    });
+    console.log('newMainAccountId', newMainAccountId)
+    expect(newMainAccountId).toBe(null);
+})
+
+const ETH_ACCOUNT = {
+    id: '0x1111222233334444555566667777888899990000',
+    originId: 'ethereum'
+};
+
+test('connect Ethereum account', async () => {
+    // From "calculates ecrecover for EIP712 signature" test for verify-eth-signature-on-near contract
+    const data = {
+      types: {
+          LinkingAccounts: [
+              { name: "account_a", type: "LinkingAccount" },
+              { name: "account_b", type: "LinkingAccount" },
+          ],
+          LinkingAccount: [
+              { name: "origin_id", type: "string" },
+              { name: "account_id", type: "string" },
+          ],
+      },
+      domain: {
+          name: "Connected Accounts",
+          version: "1",
+          chainId: 5,
+          verifyingContract: "0x0000000000000000000000000000000000000000", // The Ethereum address of the contract that will verify the signature (accessible via this)
+      },
+      primaryType: "LinkingAccounts",
+      message: {
+          account_a: {
+              origin_id: nearOriginId,
+              account_id: nearAliceId
+          },
+          account_b: {
+              origin_id: ETH_ACCOUNT.originId,
+              account_id: ETH_ACCOUNT.id
+          },
+      }
+    };
+
+    const wallet = ethers.Wallet.createRandom();
+    const signature = await wallet._signTypedData(data.domain, data.types, data.message);
+
+    const sig = signature.slice(2, 130); // first 64 bytes without 0x
+    const v = signature.slice(130, 132); // last 1 byte
+
+    // Transform yellow paper V from 27/28 to 0/1
+    // More info:
+    // https://stackoverflow.com/questions/49085737/geth-ecrecover-invalid-signature-recovery-id
+    // https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L459
+    const compatibleV = parseInt('0x' + v) - 27;
+
+    // const expectedAddress = wallet.address.toLowerCase();
+    //
+
+    // const { contract } = t.context.accounts;
+    // const result: any = await contract.view("eth_verify_eip712", {
+    //   linking_accounts: data.message,
+    //   signature: {
+    //     sig: sig,
+    //     v: compatibleV,
+    //     mc: false // ToDo: check correctness
+    //   }
+    // });
+  
+    // const receivedAddress = '0x' + result.address.toLowerCase();
+
+    const result = await aliceUseContract.requestVerification({
+        args: {
+            firstAccountId: nearAliceId,
+            firstOriginId: nearOriginId,
+            secondAccountId: ETH_ACCOUNT.id,
+            secondOriginId: ETH_ACCOUNT.originId,
+            isUnlink: false,
+            walletProof: {
+                linking_accounts: data.message,
+                signature: {
+                    sig: sig,
+                    v: compatibleV,
+                    mc: false
+                },
+            }
+        },
+        amount: "10000000000000000000000"
+    });
+    console.log('*** result', result)
+
+    // await aliceUseContract.approveRequest({ args: { requestId } });
+
+    const ca = await aliceUseContract.getConnectedAccounts({
+        accountId: nearBobId,
+        originId: nearOriginId
+    });
+    console.log('*** connectedAccountsToBobAccount', ca)
+    expect(ca).toEqual([
+        [
+            {
+                id: ACCOUNT_4.id + '/' + ACCOUNT_4.originId,
+                status: {
+                    isMain: false
+                }
+            },
+            {
+                id: ACCOUNT_1.id + '/' + ACCOUNT_1.originId,
+                status: {
+                    isMain: false
+                }
+            },
+            {
+                id: ACCOUNT_3.id + '/' + ACCOUNT_3.originId,
+                status: {
+                    isMain: false
+                }
+            }
+        ],
+        [
+            {
+                id: nearAliceId + '/' + nearOriginId,
+                status: {
+                    isMain: false
+                }
+            },
+            {
+                id: ACCOUNT_5.id + '/' + ACCOUNT_5.originId,
+                status: {
+                    isMain: false
+                }
+            }
+        ],
+        [
+            {
+                id: ACCOUNT_2.id + '/' + ACCOUNT_2.originId,
+                status: {
+                    isMain: false
+                }
+            },
+            {
+                id: ETH_ACCOUNT.id + '/' + ETH_ACCOUNT.originId,
+                status: {
+                    isMain: false
+                }
+            }
+        ]
+    ]);
 })

@@ -4,14 +4,20 @@ import {
   Context,
   logging,
   u128,
+  ContractPromise,
   ContractPromiseBatch,
   PersistentSet,
   PersistentVector,
 } from "near-sdk-core";
 
-import { Account, AccountGlobalId, AccountState, VerificationRequest } from "./modules";
+import { Account, AccountGlobalId, AccountState, VerificationRequest, WalletProof } from "./modules";
+import { get_callback_result, XCC_SUCCESS, TGAS, NO_DEPOSIT, GreetingArgs, GreetingCallbackArgs } from "./external";
 
 const NEAR_NETWORK = "testnet"; //      !!! NETWORK TYPE !!!
+
+const decentralizedOracleAddress = "dev-1673443756915-97175480951973";
+
+const DEFAULT_FUNC_CALL_GAS = u64(30_000_000_000_000);
 
 type NearAccountId = string; //  example: user.near, user.testnet
 
@@ -407,6 +413,52 @@ export function unlinkAll(): void {
   _statuses.clear();
 }
 
+// Public - eth_verify_eip712
+export function change_greeting(walletProof: WalletProof, id: u32): void {
+  assert(Context.prepaidGas >= 20 * TGAS, "Please attach at least 20 Tgas");
+
+  // Create a promise to call HelloNEAR.set_greeting(message:string)
+  const args: GreetingArgs = new GreetingArgs(walletProof);
+  // const hello_address: string = storage.getPrimitive<string>("hello-near", "");
+
+  const promise: ContractPromise = ContractPromise.create(
+    // hello_address,
+    decentralizedOracleAddress,
+    "eth_verify_eip712",
+    args.encode(),
+    5 * TGAS,
+    NO_DEPOSIT
+  );
+
+  // Create a promise to callback, needs 5 Tgas
+  const args2: GreetingCallbackArgs = new GreetingCallbackArgs(id);
+  const callbackPromise = promise.then(
+    Context.contractName,
+    "change_greeting_callback",
+    args2.encode(),
+    5 * TGAS,
+    NO_DEPOSIT
+  );
+
+  callbackPromise.returnAsResult();
+}
+
+// Public callback
+export function change_greeting_callback(id: u32): bool {
+  // make callback private and get result
+  const response = get_callback_result();
+
+  if (response.status == XCC_SUCCESS) {
+    // `set_greeting` succeeded
+    approveRequest(id);
+    return true;
+  } else {
+    // it failed
+    rejectRequest(id);
+    return false;
+  }
+}
+
 // Requests
 
 export function requestVerification(
@@ -415,6 +467,7 @@ export function requestVerification(
   secondAccountId: string,
   secondOriginId: string,
   isUnlink: boolean,
+  walletProof: WalletProof | null,
   firstProofUrl: string = "",
   secondProofUrl: string = ""
 ): u32 {
@@ -513,13 +566,22 @@ export function requestVerification(
     2nd URL: ${secondProofUrl}
   `);
 
+  // Connect decentralized accounts
+  if (!isNull(walletProof)) {
+    change_greeting(walletProof!, id);
+  }
+  //
+
   return id;
 }
 
 // HELPERS
 
 function _onlyOracle(): void {
-  assert(storage.get<NearAccountId>(ORACLE_ACCOUNT_KEY) == Context.sender, "Only oracle account can write");
+  assert(
+    storage.get<NearAccountId>(ORACLE_ACCOUNT_KEY) == Context.sender || Context.predecessor == Context.contractName,
+    "Only oracle account can write"
+  );
 }
 
 function _onlyOwner(): void {
