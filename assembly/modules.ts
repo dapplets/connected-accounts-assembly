@@ -15,16 +15,33 @@ export type AccountGlobalId = string;
 @nearBindgen
 export class AccountState {
   constructor(
-    public isMain: bool = false, // true - main, false - not main
+    public isMain: bool = false // true - main, false - not main
   ) {}
 }
 
 @nearBindgen
 export class Account {
-  constructor(
-    public id: AccountGlobalId,
-    public status: AccountState,
-  ) {}
+  constructor(public id: AccountGlobalId, public status: AccountState) {}
+}
+
+@nearBindgen
+class LinkingAccount {
+  constructor(public origin_id: string, public account_id: string) {}
+}
+
+@nearBindgen
+class LinkingAccounts {
+  constructor(public account_a: LinkingAccount, public account_b: LinkingAccount) {}
+}
+
+@nearBindgen
+class Signature {
+  constructor(public sig: u64, public v: u8, public mc: boolean) {}
+}
+
+@nearBindgen
+export class WalletProof {
+  constructor(public linking_accounts: LinkingAccounts, public signature: Signature) {}
 }
 
 @nearBindgen
@@ -35,6 +52,6 @@ export class VerificationRequest {
     public isUnlink: boolean,
     public firstProofUrl: string,
     public secondProofUrl: string,
-    public transactionSender: AccountGlobalId,
+    public transactionSender: AccountGlobalId
   ) {}
 }
