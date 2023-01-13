@@ -1349,6 +1349,11 @@ test('connect Ethereum account', async () => {
   
     // const receivedAddress = '0x' + result.address.toLowerCase();
 
+
+    console.log('*** data.message', data.message)
+    console.log('*** sig', sig)
+    console.log('*** compatibleV', compatibleV)
+
     const result = await aliceUseContract.requestVerification({
         args: {
             firstAccountId: nearAliceId,

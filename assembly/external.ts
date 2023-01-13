@@ -24,5 +24,10 @@ export class GreetingArgs {
 
 @nearBindgen
 export class GreetingCallbackArgs {
-  constructor(public id: u32) {}
+  constructor(public id: u32, public accountId: string) {}
+}
+
+@nearBindgen
+export class EcrecoverOutput {
+  constructor(public address: string) {}
 }

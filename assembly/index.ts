@@ -11,9 +11,18 @@ import {
 } from "near-sdk-core";
 
 import { Account, AccountGlobalId, AccountState, VerificationRequest, WalletProof } from "./modules";
-import { get_callback_result, XCC_SUCCESS, TGAS, NO_DEPOSIT, GreetingArgs, GreetingCallbackArgs } from "./external";
+import {
+  get_callback_result,
+  XCC_SUCCESS,
+  TGAS,
+  NO_DEPOSIT,
+  GreetingArgs,
+  GreetingCallbackArgs,
+  EcrecoverOutput,
+} from "./external";
 
 const NEAR_NETWORK = "testnet"; //      !!! NETWORK TYPE !!!
+const senderOrigin = "near" + "/" + NEAR_NETWORK;
 
 const decentralizedOracleAddress = "dev-1673443756915-97175480951973";
 
@@ -234,7 +243,7 @@ export function getRequestStatus(id: u32): u8 {
 export function changeStatus(accountId: string, originId: string, isMain: bool): void {
   _active();
   const requestGlobalId = accountId + "/" + originId;
-  const senderGlobalId = Context.sender + "/" + "near" + "/" + NEAR_NETWORK;
+  const senderGlobalId = Context.sender + "/" + senderOrigin;
   assert(_getStatus(requestGlobalId) !== isMain, "The new state is equal to the previous one");
   let connectedAccountsIds: string[][] = [[]];
   if (requestGlobalId != senderGlobalId) {
@@ -414,7 +423,7 @@ export function unlinkAll(): void {
 }
 
 // Public - eth_verify_eip712
-export function change_greeting(walletProof: WalletProof, id: u32): void {
+export function change_greeting(walletProof: WalletProof, id: u32, accountId: string): void {
   assert(Context.prepaidGas >= 20 * TGAS, "Please attach at least 20 Tgas");
 
   // Create a promise to call HelloNEAR.set_greeting(message:string)
@@ -431,7 +440,7 @@ export function change_greeting(walletProof: WalletProof, id: u32): void {
   );
 
   // Create a promise to callback, needs 5 Tgas
-  const args2: GreetingCallbackArgs = new GreetingCallbackArgs(id);
+  const args2: GreetingCallbackArgs = new GreetingCallbackArgs(id, accountId);
   const callbackPromise = promise.then(
     Context.contractName,
     "change_greeting_callback",
@@ -444,17 +453,24 @@ export function change_greeting(walletProof: WalletProof, id: u32): void {
 }
 
 // Public callback
-export function change_greeting_callback(id: u32): bool {
+export function change_greeting_callback(id: u32, accountId: string): bool {
   // make callback private and get result
   const response = get_callback_result();
 
   if (response.status == XCC_SUCCESS) {
-    // `set_greeting` succeeded
-    approveRequest(id);
+    // `get_greeting` succeeded
+    const result: EcrecoverOutput = decode<EcrecoverOutput>(response.buffer);
+    const receivedAddress = "0x" + result.address.toLowerCase();
+    logging.log(`The received address is "${receivedAddress}"`);
+    if (receivedAddress == accountId) {
+      approveRequest(id);
+    } else {
+      rejectRequest(id);
+    }
     return true;
   } else {
     // it failed
-    rejectRequest(id);
+    logging.log(`There was an error contacting Ecrecover Verification contract`);
     return false;
   }
 }
@@ -478,7 +494,6 @@ export function requestVerification(
     "Insufficient stake amount"
   );
 
-  const senderOrigin = "near" + "/" + NEAR_NETWORK;
   const senderAccount = Context.sender + "/" + senderOrigin;
 
   const firstAccountGlobalId = firstAccountId + "/" + firstOriginId;
@@ -568,7 +583,7 @@ export function requestVerification(
 
   // Connect decentralized accounts
   if (!isNull(walletProof)) {
-    change_greeting(walletProof!, id);
+    change_greeting(walletProof!, id, firstOriginId == senderOrigin ? secondAccountId : firstAccountId);
   }
   //
 
