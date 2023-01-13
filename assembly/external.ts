@@ -17,10 +17,10 @@ export function get_callback_result(): ContractPromiseResult {
 }
 
 // Auxiliary classes for cross-contract calls
-@nearBindgen
-export class GreetingArgs {
-  constructor(public message: WalletProof) {}
-}
+// @nearBindgen
+// export class GreetingArgs {
+//   constructor(public message: WalletProof) {}
+// }
 
 @nearBindgen
 export class GreetingCallbackArgs {
