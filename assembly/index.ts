@@ -16,7 +16,7 @@ import {
   XCC_SUCCESS,
   TGAS,
   NO_DEPOSIT,
-  GreetingArgs,
+  // GreetingArgs,
   GreetingCallbackArgs,
   EcrecoverOutput,
 } from "./external";
@@ -427,14 +427,14 @@ export function change_greeting(walletProof: WalletProof, id: u32, accountId: st
   assert(Context.prepaidGas >= 20 * TGAS, "Please attach at least 20 Tgas");
 
   // Create a promise to call HelloNEAR.set_greeting(message:string)
-  const args: GreetingArgs = new GreetingArgs(walletProof);
+  // const args: GreetingArgs = new GreetingArgs(walletProof);
   // const hello_address: string = storage.getPrimitive<string>("hello-near", "");
 
   const promise: ContractPromise = ContractPromise.create(
     // hello_address,
     decentralizedOracleAddress,
     "eth_verify_eip712",
-    args.encode(),
+    walletProof.encode(),
     5 * TGAS,
     NO_DEPOSIT
   );
