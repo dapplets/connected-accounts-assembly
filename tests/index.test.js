@@ -1350,6 +1350,7 @@ test('connect Ethereum account', async () => {
     // const receivedAddress = '0x' + result.address.toLowerCase();
 
 
+    console.log('*** wallet.address', wallet.address)
     console.log('*** data.message', data.message)
     console.log('*** sig', sig)
     console.log('*** compatibleV', compatibleV)

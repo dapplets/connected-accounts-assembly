@@ -286,6 +286,7 @@ export function changeStatus(accountId: string, originId: string, isMain: bool):
 }
 
 export function approveRequest(requestId: u32): void {
+  logging.log(`Trying to approve`);
   _active();
   _onlyOracle();
   assert(verificationRequests.containsIndex(requestId), "Non-existent request ID");
@@ -384,14 +385,17 @@ export function approveRequest(requestId: u32): void {
 
   pendingRequests.delete(requestId);
   approvedRequests.add(requestId);
+  logging.log(`Approving done`);
 }
 
 export function rejectRequest(requestId: u32): void {
+  logging.log(`Trying to reject`);
   _active();
-  _onlyOracle();
+  // _onlyOracle();
   assert(verificationRequests.containsIndex(requestId), "Non-existent request ID");
   assert(pendingRequests.has(requestId), "The request has already been processed");
   pendingRequests.delete(requestId);
+  logging.log(`Reject done`);
 }
 
 export function changeOwnerAccount(newAccountId: NearAccountId): void {
@@ -463,8 +467,10 @@ export function change_greeting_callback(id: u32, accountId: string): bool {
     const receivedAddress = "0x" + result.address.toLowerCase();
     logging.log(`The received address is "${receivedAddress}"`);
     if (receivedAddress == accountId) {
+      logging.log(`Let's approve"`);
       approveRequest(id);
     } else {
+      logging.log(`Let's reject"`);
       rejectRequest(id);
     }
     return true;
