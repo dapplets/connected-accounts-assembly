@@ -391,7 +391,7 @@ export function approveRequest(requestId: u32): void {
 export function rejectRequest(requestId: u32): void {
   logging.log(`Trying to reject`);
   _active();
-  // _onlyOracle();
+  _onlyOracle();
   assert(verificationRequests.containsIndex(requestId), "Non-existent request ID");
   assert(pendingRequests.has(requestId), "The request has already been processed");
   pendingRequests.delete(requestId);
