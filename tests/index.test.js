@@ -1292,6 +1292,8 @@ const ETH_ACCOUNT = {
 
 test('connect Ethereum account', async () => {
     // From "calculates ecrecover for EIP712 signature" test for verify-eth-signature-on-near contract
+    const wallet = ethers.Wallet.createRandom();
+    const expectedAddress = wallet.address.toLowerCase()
     const data = {
       types: {
           LinkingAccounts: [
@@ -1317,12 +1319,11 @@ test('connect Ethereum account', async () => {
           },
           account_b: {
               origin_id: ETH_ACCOUNT.originId,
-              account_id: ETH_ACCOUNT.id
+              account_id: expectedAddress
           },
       }
     };
 
-    const wallet = ethers.Wallet.createRandom();
     const signature = await wallet._signTypedData(data.domain, data.types, data.message);
 
     const sig = signature.slice(2, 130); // first 64 bytes without 0x
@@ -1359,7 +1360,7 @@ test('connect Ethereum account', async () => {
         args: {
             firstAccountId: nearAliceId,
             firstOriginId: nearOriginId,
-            secondAccountId: ETH_ACCOUNT.id,
+            secondAccountId: expectedAddress,
             secondOriginId: ETH_ACCOUNT.originId,
             isUnlink: false,
             walletProof: {
@@ -1425,7 +1426,7 @@ test('connect Ethereum account', async () => {
                 }
             },
             {
-                id: ETH_ACCOUNT.id + '/' + ETH_ACCOUNT.originId,
+                id: expectedAddress + '/' + ETH_ACCOUNT.originId,
                 status: {
                     isMain: false
                 }
