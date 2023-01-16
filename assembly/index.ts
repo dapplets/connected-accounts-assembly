@@ -449,7 +449,7 @@ export function change_greeting(walletProof: WalletProof, id: u32, accountId: st
     Context.contractName,
     "change_greeting_callback",
     args2.encode(),
-    5 * TGAS,
+    10 * TGAS,
     NO_DEPOSIT
   );
 
