@@ -577,8 +577,14 @@ export function requestVerification(
   );
   pendingRequests.add(id);
 
-  const oracleAccount = storage.get<NearAccountId>(ORACLE_ACCOUNT_KEY)!;
-  ContractPromiseBatch.create(oracleAccount).transfer(Context.attachedDeposit);
+  // Connect decentralized accounts
+  if (!isNull(walletProof)) {
+    change_greeting(walletProof!, id, firstOriginId == senderOrigin ? secondAccountId : firstAccountId);
+  } else {
+    const oracleAccount = storage.get<NearAccountId>(ORACLE_ACCOUNT_KEY)!;
+    ContractPromiseBatch.create(oracleAccount).transfer(Context.attachedDeposit);
+  }
+  //
 
   logging.log(`
     ${firstAccountId} requests to link ${secondAccountId} account.
@@ -586,12 +592,6 @@ export function requestVerification(
     1st URL: ${firstProofUrl}
     2nd URL: ${secondProofUrl}
   `);
-
-  // Connect decentralized accounts
-  if (!isNull(walletProof)) {
-    change_greeting(walletProof!, id, firstOriginId == senderOrigin ? secondAccountId : firstAccountId);
-  }
-  //
 
   return id;
 }
