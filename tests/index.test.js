@@ -184,6 +184,7 @@ test('creates request', async () => {
             isUnlink: false,
             firstProofUrl: "https://example.com"
         },
+        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
 
@@ -278,6 +279,7 @@ test('approve the unlinking request, get the request approve and unconnect accou
             walletProof: null,
             firstProofUrl: "https://example.com"
         },
+        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
 
@@ -315,6 +317,7 @@ test('approve two linking requests, get the requests approves and connect accoun
             walletProof: null,
             firstProofUrl: "https://example.com"
         },
+        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
 
@@ -328,6 +331,7 @@ test('approve two linking requests, get the requests approves and connect accoun
             walletProof: null,
             firstProofUrl: "https://example.com"
         },
+        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
 
@@ -480,6 +484,7 @@ test('recursively getting the entire network of connected accounts', async () =>
             walletProof: null,
             firstProofUrl: "https://example.com"
         },
+        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
 
@@ -493,6 +498,7 @@ test('recursively getting the entire network of connected accounts', async () =>
             walletProof: null,
             firstProofUrl: "https://example.com"
         },
+        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
 
@@ -506,6 +512,7 @@ test('recursively getting the entire network of connected accounts', async () =>
             walletProof: null,
             firstProofUrl: "https://example.com"
         },
+        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
 
@@ -675,6 +682,7 @@ test('merge 2 nets with main accouts', async () => {
             walletProof: null,
             firstProofUrl: "https://example.com"
         },
+        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
     await aliceUseContract.approveRequest({ args: { requestId: id_1 } });
@@ -739,6 +747,7 @@ test('merge 2 nets with main accouts', async () => {
             walletProof: null,
             firstProofUrl: "https://example.com"
         },
+        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
     await aliceUseContract.approveRequest({ args: { requestId: id_2 } });
@@ -827,6 +836,7 @@ test('merge 2 nets with main accouts', async () => {
             walletProof: null,
             firstProofUrl: "https://example.com"
         },
+        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
     await aliceUseContract.approveRequest({ args: { requestId: id_3 } });
@@ -950,6 +960,7 @@ test('getting request status', async () => {
             walletProof: null,
             firstProofUrl: "https://example.com"
         },
+        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
     const id_2 = await bobUseContract.requestVerification({
@@ -962,6 +973,7 @@ test('getting request status', async () => {
             walletProof: null,
             firstProofUrl: "https://example.com"
         },
+        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
     const requests_2 = await bobUseContract.getPendingRequests();
@@ -1062,6 +1074,7 @@ test('merge 2 nets with one main accout and set the main account in the differen
             walletProof: null,
             firstProofUrl: "https://example.com"
         },
+        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
     await aliceUseContract.approveRequest({ args: { requestId } });
@@ -1190,6 +1203,7 @@ test('two requests with the same accounts', async () => {
             walletProof: null,
             firstProofUrl: "https://example.com"
         },
+        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
 
@@ -1208,6 +1222,7 @@ test('two requests with the same accounts', async () => {
             walletProof: null,
             firstProofUrl: "https://example.com"
         },
+        gas: 300000000000000,
         amount: "1000000000000000000000"
     })).rejects.toThrow('There is a pending request with the same two accounts. Try again later')
 
@@ -1221,6 +1236,7 @@ test('two requests with the same accounts', async () => {
             walletProof: null,
             firstProofUrl: "https://example.com"
         },
+        gas: 300000000000000,
         amount: "1000000000000000000000"
     })).rejects.toThrow('There is a pending request with the same two accounts. Try again later')
 
@@ -1251,6 +1267,7 @@ test('single account cannot have main status', async () => {
             walletProof: null,
             firstProofUrl: "https://example.com"
         },
+        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
 
@@ -1272,6 +1289,7 @@ test('single account cannot have main status', async () => {
             walletProof: null,
             firstProofUrl: "https://example.com"
         },
+        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
 
@@ -1372,6 +1390,7 @@ test('connect Ethereum account', async () => {
                 },
             }
         },
+        gas: 300000000000000,
         amount: "10000000000000000000000"
     });
     console.log('*** result', result)
