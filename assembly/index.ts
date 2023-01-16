@@ -428,7 +428,7 @@ export function unlinkAll(): void {
 
 // Public - eth_verify_eip712
 export function change_greeting(walletProof: WalletProof, id: u32, accountId: string): void {
-  assert(Context.prepaidGas >= 20 * TGAS, "Please attach at least 20 Tgas");
+  assert(Context.prepaidGas >= 25 * TGAS, "Please attach at least 20 Tgas");
 
   // Create a promise to call HelloNEAR.set_greeting(message:string)
   // const args: GreetingArgs = new GreetingArgs(walletProof);
@@ -499,6 +499,7 @@ export function requestVerification(
     u128.ge(Context.attachedDeposit, storage.get<u128>(MIN_STAKE_AMOUNT_KEY, u128.Zero)!),
     "Insufficient stake amount"
   );
+  assert(Context.prepaidGas >= 35 * TGAS, "Please attach at least 35 Tgas");
 
   const senderAccount = Context.sender + "/" + senderOrigin;
 
