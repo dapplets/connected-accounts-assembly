@@ -180,11 +180,10 @@ test('creates request', async () => {
             firstOriginId: ACCOUNT_1.originId,
             secondAccountId: nearAliceId,
             secondOriginId: nearOriginId,
-            walletProof: null,
+            signature: null,
             isUnlink: false,
             firstProofUrl: "https://example.com"
         },
-        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
 
@@ -276,10 +275,9 @@ test('approve the unlinking request, get the request approve and unconnect accou
             secondAccountId: nearAliceId,
             secondOriginId: nearOriginId,
             isUnlink: true,
-            walletProof: null,
+            signature: null,
             firstProofUrl: "https://example.com"
         },
-        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
 
@@ -314,10 +312,9 @@ test('approve two linking requests, get the requests approves and connect accoun
             secondAccountId: nearAliceId,
             secondOriginId: nearOriginId,
             isUnlink: false,
-            walletProof: null,
+            signature: null,
             firstProofUrl: "https://example.com"
         },
-        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
 
@@ -328,10 +325,9 @@ test('approve two linking requests, get the requests approves and connect accoun
             secondAccountId: nearBobId,
             secondOriginId: nearOriginId,
             isUnlink: false,
-            walletProof: null,
+            signature: null,
             firstProofUrl: "https://example.com"
         },
-        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
 
@@ -481,10 +477,9 @@ test('recursively getting the entire network of connected accounts', async () =>
             secondAccountId: nearAliceId,
             secondOriginId: nearOriginId,
             isUnlink: false,
-            walletProof: null,
+            signature: null,
             firstProofUrl: "https://example.com"
         },
-        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
 
@@ -495,10 +490,9 @@ test('recursively getting the entire network of connected accounts', async () =>
             secondAccountId: nearBobId,
             secondOriginId: nearOriginId,
             isUnlink: false,
-            walletProof: null,
+            signature: null,
             firstProofUrl: "https://example.com"
         },
-        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
 
@@ -509,10 +503,9 @@ test('recursively getting the entire network of connected accounts', async () =>
             secondAccountId: nearBobId,
             secondOriginId: nearOriginId,
             isUnlink: false,
-            walletProof: null,
+            signature: null,
             firstProofUrl: "https://example.com"
         },
-        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
 
@@ -679,10 +672,9 @@ test('merge 2 nets with main accouts', async () => {
             secondAccountId: nearBobId,
             secondOriginId: nearOriginId,
             isUnlink: true,
-            walletProof: null,
+            signature: null,
             firstProofUrl: "https://example.com"
         },
-        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
     await aliceUseContract.approveRequest({ args: { requestId: id_1 } });
@@ -744,10 +736,9 @@ test('merge 2 nets with main accouts', async () => {
             secondAccountId: ACCOUNT_3.id,
             secondOriginId: ACCOUNT_3.originId,
             isUnlink: false,
-            walletProof: null,
+            signature: null,
             firstProofUrl: "https://example.com"
         },
-        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
     await aliceUseContract.approveRequest({ args: { requestId: id_2 } });
@@ -833,10 +824,9 @@ test('merge 2 nets with main accouts', async () => {
             secondAccountId: ACCOUNT_1.id,
             secondOriginId: ACCOUNT_1.originId,
             isUnlink: false,
-            walletProof: null,
+            signature: null,
             firstProofUrl: "https://example.com"
         },
-        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
     await aliceUseContract.approveRequest({ args: { requestId: id_3 } });
@@ -957,10 +947,9 @@ test('getting request status', async () => {
             secondAccountId: nearBobId,
             secondOriginId: nearOriginId,
             isUnlink: true,
-            walletProof: null,
+            signature: null,
             firstProofUrl: "https://example.com"
         },
-        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
     const id_2 = await bobUseContract.requestVerification({
@@ -970,10 +959,9 @@ test('getting request status', async () => {
             secondAccountId: nearBobId,
             secondOriginId: nearOriginId,
             isUnlink: true,
-            walletProof: null,
+            signature: null,
             firstProofUrl: "https://example.com"
         },
-        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
     const requests_2 = await bobUseContract.getPendingRequests();
@@ -1071,10 +1059,9 @@ test('merge 2 nets with one main accout and set the main account in the differen
             secondAccountId: ACCOUNT_3.id,
             secondOriginId: ACCOUNT_3.originId,
             isUnlink: false,
-            walletProof: null,
+            signature: null,
             firstProofUrl: "https://example.com"
         },
-        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
     await aliceUseContract.approveRequest({ args: { requestId } });
@@ -1200,10 +1187,9 @@ test('two requests with the same accounts', async () => {
             secondAccountId: ACCOUNT_1.id,
             secondOriginId: ACCOUNT_1.originId,
             isUnlink: true,
-            walletProof: null,
+            signature: null,
             firstProofUrl: "https://example.com"
         },
-        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
 
@@ -1219,10 +1205,9 @@ test('two requests with the same accounts', async () => {
             secondAccountId: ACCOUNT_1.id,
             secondOriginId: ACCOUNT_1.originId,
             isUnlink: true,
-            walletProof: null,
+            signature: null,
             firstProofUrl: "https://example.com"
         },
-        gas: 300000000000000,
         amount: "1000000000000000000000"
     })).rejects.toThrow('There is a pending request with the same two accounts. Try again later')
 
@@ -1233,10 +1218,9 @@ test('two requests with the same accounts', async () => {
             secondAccountId: ACCOUNT_1.id,
             secondOriginId: ACCOUNT_1.originId,
             isUnlink: false,
-            walletProof: null,
+            signature: null,
             firstProofUrl: "https://example.com"
         },
-        gas: 300000000000000,
         amount: "1000000000000000000000"
     })).rejects.toThrow('There is a pending request with the same two accounts. Try again later')
 
@@ -1264,10 +1248,9 @@ test('single account cannot have main status', async () => {
             secondAccountId: ACCOUNT_5.id,
             secondOriginId: ACCOUNT_5.originId,
             isUnlink: true,
-            walletProof: null,
+            signature: null,
             firstProofUrl: "https://example.com"
         },
-        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
 
@@ -1286,10 +1269,9 @@ test('single account cannot have main status', async () => {
             secondAccountId: ACCOUNT_5.id,
             secondOriginId: ACCOUNT_5.originId,
             isUnlink: false,
-            walletProof: null,
+            signature: null,
             firstProofUrl: "https://example.com"
         },
-        gas: 300000000000000,
         amount: "1000000000000000000000"
     });
 
@@ -1333,7 +1315,7 @@ test('connect Ethereum account', async () => {
       message: {
           account_a: {
               origin_id: nearOriginId,
-              account_id: nearAliceId
+              account_id: 'nik4ter.testnet'
           },
           account_b: {
               origin_id: ETH_ACCOUNT.originId,
@@ -1381,17 +1363,16 @@ test('connect Ethereum account', async () => {
             secondAccountId: expectedAddress,
             secondOriginId: ETH_ACCOUNT.originId,
             isUnlink: false,
-            walletProof: {
-                linking_accounts: data.message,
+            // walletProof: {
+            //     linking_accounts: data.message,
                 signature: {
                     sig: sig,
                     v: compatibleV,
                     mc: false
-                },
+                // },
             }
         },
-        gas: 300000000000000,
-        amount: "10000000000000000000000"
+        gas: 50000000000000
     });
     console.log('*** result', result)
 

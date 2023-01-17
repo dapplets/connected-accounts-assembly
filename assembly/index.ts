@@ -10,7 +10,16 @@ import {
   PersistentVector,
 } from "near-sdk-core";
 
-import { Account, AccountGlobalId, AccountState, VerificationRequest, WalletProof } from "./modules";
+import {
+  Account,
+  AccountGlobalId,
+  AccountState,
+  LinkingAccount,
+  LinkingAccounts,
+  Signature,
+  VerificationRequest,
+  WalletProof,
+} from "./modules";
 import {
   get_callback_result,
   XCC_SUCCESS,
@@ -426,14 +435,8 @@ export function unlinkAll(): void {
   _statuses.clear();
 }
 
-// Public - eth_verify_eip712
-export function change_greeting(walletProof: WalletProof, id: u32, accountId: string): void {
-  assert(Context.prepaidGas >= 25 * TGAS, "Please attach at least 20 Tgas");
-
-  // Create a promise to call HelloNEAR.set_greeting(message:string)
-  // const args: GreetingArgs = new GreetingArgs(walletProof);
-  // const hello_address: string = storage.getPrimitive<string>("hello-near", "");
-
+export function verifyWallet(walletProof: WalletProof, id: u32, accountId: string): void {
+  assert(Context.prepaidGas >= 25 * TGAS, "Please attach at least 25 Tgas");
   const promise: ContractPromise = ContractPromise.create(
     // hello_address,
     decentralizedOracleAddress,
@@ -443,12 +446,11 @@ export function change_greeting(walletProof: WalletProof, id: u32, accountId: st
     NO_DEPOSIT
   );
 
-  // Create a promise to callback, needs 5 Tgas
-  const args2: GreetingCallbackArgs = new GreetingCallbackArgs(id, accountId);
+  const args: GreetingCallbackArgs = new GreetingCallbackArgs(id, accountId);
   const callbackPromise = promise.then(
     Context.contractName,
-    "change_greeting_callback",
-    args2.encode(),
+    "verifyWalletCallback",
+    args.encode(),
     10 * TGAS,
     NO_DEPOSIT
   );
@@ -456,13 +458,9 @@ export function change_greeting(walletProof: WalletProof, id: u32, accountId: st
   callbackPromise.returnAsResult();
 }
 
-// Public callback
-export function change_greeting_callback(id: u32, accountId: string): bool {
-  // make callback private and get result
+export function verifyWalletCallback(id: u32, accountId: string): bool {
   const response = get_callback_result();
-
   if (response.status == XCC_SUCCESS) {
-    // `get_greeting` succeeded
     const result: EcrecoverOutput = decode<EcrecoverOutput>(response.buffer);
     const receivedAddress = "0x" + result.address.toLowerCase();
     logging.log(`The received address is "${receivedAddress}"`);
@@ -475,7 +473,6 @@ export function change_greeting_callback(id: u32, accountId: string): bool {
     }
     return true;
   } else {
-    // it failed
     logging.log(`There was an error contacting Ecrecover Verification contract`);
     return false;
   }
@@ -489,20 +486,22 @@ export function requestVerification(
   secondAccountId: string,
   secondOriginId: string,
   isUnlink: boolean,
-  walletProof: WalletProof | null,
+  signature: Signature | null,
   firstProofUrl: string = "",
   secondProofUrl: string = ""
 ): u32 {
   _active();
   assert(Context.sender == Context.predecessor, "Cross-contract calls is not allowed");
-  assert(
-    u128.ge(Context.attachedDeposit, storage.get<u128>(MIN_STAKE_AMOUNT_KEY, u128.Zero)!),
-    "Insufficient stake amount"
-  );
-  assert(Context.prepaidGas >= 35 * TGAS, "Please attach at least 35 Tgas");
+  if (isNull(signature)) {
+    assert(
+      u128.ge(Context.attachedDeposit, storage.get<u128>(MIN_STAKE_AMOUNT_KEY, u128.Zero)!),
+      "Insufficient stake amount"
+    );
+  } else {
+    assert(Context.prepaidGas >= 50 * TGAS, "Please attach at least 50 Tgas");
+  }
 
   const senderAccount = Context.sender + "/" + senderOrigin;
-
   const firstAccountGlobalId = firstAccountId + "/" + firstOriginId;
   const secondAccountGlobalId = secondAccountId + "/" + secondOriginId;
 
@@ -579,11 +578,31 @@ export function requestVerification(
   pendingRequests.add(id);
 
   // Connect decentralized accounts
-  if (!isNull(walletProof)) {
-    change_greeting(walletProof!, id, firstOriginId == senderOrigin ? secondAccountId : firstAccountId);
-  } else {
+  if (isNull(signature)) {
     const oracleAccount = storage.get<NearAccountId>(ORACLE_ACCOUNT_KEY)!;
     ContractPromiseBatch.create(oracleAccount).transfer(Context.attachedDeposit);
+  } else {
+    let walletProof: WalletProof;
+    if (firstOriginId == NEAR_NETWORK) {
+      assert(Context.sender == firstAccountId, "You must sign the request with the NEAR wallet you are linking.");
+      walletProof = new WalletProof(
+        new LinkingAccounts(
+          new LinkingAccount(firstOriginId, firstAccountId),
+          new LinkingAccount(secondOriginId, secondAccountId)
+        ),
+        signature!
+      );
+    } else {
+      assert(Context.sender == secondAccountId, "You must sign the request with the NEAR wallet you are linking.");
+      walletProof = new WalletProof(
+        new LinkingAccounts(
+          new LinkingAccount(secondOriginId, secondAccountId),
+          new LinkingAccount(firstOriginId, firstAccountId)
+        ),
+        signature!
+      );
+    }
+    verifyWallet(walletProof, id, firstOriginId == senderOrigin ? secondAccountId : firstAccountId);
   }
   //
 

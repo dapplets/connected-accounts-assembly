@@ -25,17 +25,17 @@ export class Account {
 }
 
 @nearBindgen
-class LinkingAccount {
+export class LinkingAccount {
   constructor(public origin_id: string, public account_id: string) {}
 }
 
 @nearBindgen
-class LinkingAccounts {
+export class LinkingAccounts {
   constructor(public account_a: LinkingAccount, public account_b: LinkingAccount) {}
 }
 
 @nearBindgen
-class Signature {
+export class Signature {
   constructor(public sig: string, public v: u8, public mc: boolean) {}
 }
 
