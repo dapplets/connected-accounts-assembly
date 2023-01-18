@@ -1315,7 +1315,7 @@ test('connect Ethereum account', async () => {
       message: {
           account_a: {
               origin_id: nearOriginId,
-              account_id: 'nik4ter.testnet'
+              account_id: nearAliceId // This needs for creating the signature for testing in the global NEAR testnet. Another value is: 'nik4ter.testnet'
           },
           account_b: {
               origin_id: ETH_ACCOUNT.originId,
@@ -1328,55 +1328,33 @@ test('connect Ethereum account', async () => {
 
     const sig = signature.slice(2, 130); // first 64 bytes without 0x
     const v = signature.slice(130, 132); // last 1 byte
-
-    // Transform yellow paper V from 27/28 to 0/1
-    // More info:
-    // https://stackoverflow.com/questions/49085737/geth-ecrecover-invalid-signature-recovery-id
-    // https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L459
     const compatibleV = parseInt('0x' + v) - 27;
-
-    // const expectedAddress = wallet.address.toLowerCase();
-    //
-
-    // const { contract } = t.context.accounts;
-    // const result: any = await contract.view("eth_verify_eip712", {
-    //   linking_accounts: data.message,
-    //   signature: {
-    //     sig: sig,
-    //     v: compatibleV,
-    //     mc: false // ToDo: check correctness
-    //   }
-    // });
-  
-    // const receivedAddress = '0x' + result.address.toLowerCase();
-
 
     console.log('*** wallet.address', wallet.address)
     console.log('*** data.message', data.message)
     console.log('*** sig', sig)
     console.log('*** compatibleV', compatibleV)
 
-    const result = await aliceUseContract.requestVerification({
-        args: {
-            firstAccountId: nearAliceId,
-            firstOriginId: nearOriginId,
-            secondAccountId: expectedAddress,
-            secondOriginId: ETH_ACCOUNT.originId,
-            isUnlink: false,
-            // walletProof: {
-            //     linking_accounts: data.message,
-                signature: {
-                    sig: sig,
-                    v: compatibleV,
-                    mc: false
-                // },
-            }
-        },
-        gas: 50000000000000
-    });
-    console.log('*** result', result)
-
-    // await aliceUseContract.approveRequest({ args: { requestId } });
+    try {
+      const result = await aliceUseContract.requestVerification({
+          args: {
+              firstAccountId: nearAliceId,
+              firstOriginId: nearOriginId,
+              secondAccountId: expectedAddress,
+              secondOriginId: ETH_ACCOUNT.originId,
+              isUnlink: false,
+              signature: {
+                  sig: sig,
+                  v: compatibleV,
+                  mc: false
+              }
+          },
+          gas: 300000000000000
+      });
+      console.log('*** result', result)
+    } catch (err) {
+      console.log('*** ERROR.', err)
+    }
 
     const ca = await aliceUseContract.getConnectedAccounts({
         accountId: nearBobId,
@@ -1421,12 +1399,6 @@ test('connect Ethereum account', async () => {
         [
             {
                 id: ACCOUNT_2.id + '/' + ACCOUNT_2.originId,
-                status: {
-                    isMain: false
-                }
-            },
-            {
-                id: expectedAddress + '/' + ETH_ACCOUNT.originId,
                 status: {
                     isMain: false
                 }

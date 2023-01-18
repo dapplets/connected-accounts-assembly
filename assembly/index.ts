@@ -35,8 +35,6 @@ const senderOrigin = "near" + "/" + NEAR_NETWORK;
 
 const decentralizedOracleAddress = "dev-1673443756915-97175480951973";
 
-const DEFAULT_FUNC_CALL_GAS = u64(30_000_000_000_000);
-
 type NearAccountId = string; //  example: user.near, user.testnet
 
 //// MODELS
@@ -465,15 +463,15 @@ export function verifyWalletCallback(id: u32, accountId: string): bool {
     const receivedAddress = "0x" + result.address.toLowerCase();
     logging.log(`The received address is "${receivedAddress}"`);
     if (receivedAddress == accountId) {
-      logging.log(`Let's approve"`);
+      logging.log("Let's approve");
       approveRequest(id);
     } else {
-      logging.log(`Let's reject"`);
+      logging.log("Let's reject");
       rejectRequest(id);
     }
     return true;
   } else {
-    logging.log(`There was an error contacting Ecrecover Verification contract`);
+    logging.log("There was an error contacting Ecrecover Verification contract");
     return false;
   }
 }
@@ -581,9 +579,15 @@ export function requestVerification(
   if (isNull(signature)) {
     const oracleAccount = storage.get<NearAccountId>(ORACLE_ACCOUNT_KEY)!;
     ContractPromiseBatch.create(oracleAccount).transfer(Context.attachedDeposit);
+    logging.log(`
+      ${firstAccountId} requests to link ${secondAccountId} account.
+      Proof ID: ${id.toString()}
+      1st URL: ${firstProofUrl}
+      2nd URL: ${secondProofUrl}
+    `);
   } else {
     let walletProof: WalletProof;
-    if (firstOriginId == NEAR_NETWORK) {
+    if (firstOriginId == senderOrigin) {
       assert(Context.sender == firstAccountId, "You must sign the request with the NEAR wallet you are linking.");
       walletProof = new WalletProof(
         new LinkingAccounts(
@@ -603,15 +607,9 @@ export function requestVerification(
       );
     }
     verifyWallet(walletProof, id, firstOriginId == senderOrigin ? secondAccountId : firstAccountId);
+    logging.log(`${firstAccountId} requests to link ${secondAccountId} account`);
   }
   //
-
-  logging.log(`
-    ${firstAccountId} requests to link ${secondAccountId} account.
-    Proof ID: ${id.toString()}
-    1st URL: ${firstProofUrl}
-    2nd URL: ${secondProofUrl}
-  `);
 
   return id;
 }

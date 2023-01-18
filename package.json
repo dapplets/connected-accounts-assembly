@@ -1,6 +1,6 @@
 {
   "name": "connected-accounts-assembly",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Connected Accounts contract in AssemblyScript",
   "author": "Dapplets Team",
   "license": "MIT",
