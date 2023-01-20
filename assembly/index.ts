@@ -434,13 +434,13 @@ export function unlinkAll(): void {
 }
 
 export function verifyWallet(walletProof: WalletProof, id: u32, accountId: string): void {
-  assert(Context.prepaidGas >= 25 * TGAS, "Please attach at least 25 Tgas");
+  assert(Context.prepaidGas >= 40 * TGAS, "Please attach at least 40 Tgas");
   const promise: ContractPromise = ContractPromise.create(
     // hello_address,
     decentralizedOracleAddress,
     "eth_verify_eip712",
     walletProof.encode(),
-    5 * TGAS,
+    10 * TGAS,
     NO_DEPOSIT
   );
 
@@ -449,7 +449,7 @@ export function verifyWallet(walletProof: WalletProof, id: u32, accountId: strin
     Context.contractName,
     "verifyWalletCallback",
     args.encode(),
-    10 * TGAS,
+    20 * TGAS,
     NO_DEPOSIT
   );
 
@@ -496,7 +496,7 @@ export function requestVerification(
       "Insufficient stake amount"
     );
   } else {
-    assert(Context.prepaidGas >= 50 * TGAS, "Please attach at least 50 Tgas");
+    assert(Context.prepaidGas >= 60 * TGAS, "Please attach at least 60 Tgas");
   }
 
   const senderAccount = Context.sender + "/" + senderOrigin;
