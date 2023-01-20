@@ -504,16 +504,25 @@ export function requestVerification(
   const secondAccountGlobalId = secondAccountId + "/" + secondOriginId;
 
   // Check if there are pending requests with the same two accounts
-  const a = getPendingRequests();
-  for (let i = 0; i < a.length; i++) {
-    const b = getVerificationRequest(a[i]);
-    const first = b!.firstAccount;
-    const second = b!.secondAccount;
-    assert(
-      !(first == firstAccountGlobalId && second == secondAccountGlobalId) &&
-        !(first == secondAccountGlobalId && second == firstAccountGlobalId),
-      "There is a pending request with the same two accounts. Try again later."
-    );
+  const pendingRequestsIds = getPendingRequests();
+  for (let i = 0; i < pendingRequestsIds.length; i++) {
+    const verificationRequestInfo = getVerificationRequest(pendingRequestsIds[i]);
+    const first = verificationRequestInfo!.firstAccount;
+    const second = verificationRequestInfo!.secondAccount;
+    if (
+      (first == firstAccountGlobalId && second == secondAccountGlobalId) ||
+      (first == secondAccountGlobalId && second == firstAccountGlobalId)
+    ) {
+      assert(isUnlink && !isNull(signature), "There is a pending request with the same two accounts. Try again later.");
+      assert(
+        (senderAccount == firstAccountGlobalId || senderAccount == secondAccountGlobalId) &&
+          (senderAccount == first || senderAccount == second),
+        `Only the same NEAR account can cancel previous request with id: ${pendingRequestsIds[i]}`
+      );
+      pendingRequests.delete(pendingRequestsIds[i]);
+      logging.log(`The pending request with id: ${pendingRequestsIds[i]} was canceled.`);
+      return -1;
+    }
   }
   //
 
