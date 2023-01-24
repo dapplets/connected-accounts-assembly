@@ -1294,11 +1294,13 @@ test('connect Ethereum account', async () => {
     // From "calculates ecrecover for EIP712 signature" test for verify-eth-signature-on-near contract
     const wallet = ethers.Wallet.createRandom();
     const expectedAddress = wallet.address.toLowerCase()
+    const statement = 'I confirm that I am the owner of Account A and Account B and I want to link them in the Connected Accounts service.'
     const data = {
       types: {
           LinkingAccounts: [
               { name: "account_a", type: "LinkingAccount" },
               { name: "account_b", type: "LinkingAccount" },
+              { name: "statement", type: "string" },
           ],
           LinkingAccount: [
               { name: "origin_id", type: "string" },
@@ -1321,6 +1323,7 @@ test('connect Ethereum account', async () => {
               origin_id: ETH_ACCOUNT.originId,
               account_id: expectedAddress
           },
+          statement
       }
     };
 
@@ -1347,7 +1350,8 @@ test('connect Ethereum account', async () => {
                   sig: sig,
                   v: compatibleV,
                   mc: false
-              }
+              },
+              statement
           },
           gas: 300000000000000
       });

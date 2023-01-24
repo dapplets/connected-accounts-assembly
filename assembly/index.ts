@@ -486,7 +486,8 @@ export function requestVerification(
   isUnlink: boolean,
   signature: Signature | null,
   firstProofUrl: string = "",
-  secondProofUrl: string = ""
+  secondProofUrl: string = "",
+  statement: string = ""
 ): u32 {
   _active();
   assert(Context.sender == Context.predecessor, "Cross-contract calls is not allowed");
@@ -601,7 +602,8 @@ export function requestVerification(
       walletProof = new WalletProof(
         new LinkingAccounts(
           new LinkingAccount(firstOriginId, firstAccountId),
-          new LinkingAccount(secondOriginId, secondAccountId)
+          new LinkingAccount(secondOriginId, secondAccountId),
+          statement!
         ),
         signature!
       );
@@ -610,7 +612,8 @@ export function requestVerification(
       walletProof = new WalletProof(
         new LinkingAccounts(
           new LinkingAccount(secondOriginId, secondAccountId),
-          new LinkingAccount(firstOriginId, firstAccountId)
+          new LinkingAccount(firstOriginId, firstAccountId),
+          statement!
         ),
         signature!
       );
