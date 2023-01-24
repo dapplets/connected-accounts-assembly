@@ -31,12 +31,12 @@ export class LinkingAccount {
 
 @nearBindgen
 export class LinkingAccounts {
-  constructor(public account_a: LinkingAccount, public account_b: LinkingAccount) {}
+  constructor(public account_a: LinkingAccount, public account_b: LinkingAccount, public statement: string) {}
 }
 
 @nearBindgen
 export class Signature {
-  constructor(public sig: string, public v: u8, public mc: boolean) {}
+  constructor(public statement: string, public sig: string, public v: u8, public mc: boolean) {}
 }
 
 @nearBindgen
