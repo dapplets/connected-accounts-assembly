@@ -33,7 +33,7 @@ import {
 const NEAR_NETWORK = "testnet"; //      !!! NETWORK TYPE !!!
 const senderOrigin = "near" + "/" + NEAR_NETWORK;
 
-const decentralizedOracleAddress = "dev-1673443756915-97175480951973";
+const decentralizedOracleAddress = "dev-1674548694574-99647391067733";
 
 type NearAccountId = string; //  example: user.near, user.testnet
 
