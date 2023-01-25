@@ -14,22 +14,23 @@ async function start() {
         nodeUrl: process.env.NODE_URL,
         walletUrl: process.env.WALLET_URL,
         helperUrl: process.env.HELPER_URL,
-        explorerUrl: process.env.EXPLORER_URL
+        explorerUrl: process.env.EXPLORER_URL,
     }
 
     const near = await connect(config)
     const account = await near.account(process.env.ORACLE_ACCOUNT_ID)
 
     const verifyContract = async (contractAddress) => {
-        const contract = new Contract(
-            account,
-            contractAddress,
-            {
-                viewMethods: ["getConnectedAccounts", "getOracleAccount", "getPendingRequests", "getVerificationRequest"],
-                changeMethods: ["approveRequest", "rejectRequest"],
-                sender: account
-            }
-        )
+        const contract = new Contract(account, contractAddress, {
+            viewMethods: [
+                'getConnectedAccounts',
+                'getOracleAccount',
+                'getPendingRequests',
+                'getVerificationRequest',
+            ],
+            changeMethods: ['approveRequest', 'rejectRequest'],
+            sender: account,
+        })
 
         await contract.getOracleAccount()
 
@@ -43,7 +44,10 @@ async function start() {
         console.log(`Found ${pendingRequests.length} pending requests.`)
         console.log(`Browser launching...`)
 
-        const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] })
+        const browser = await puppeteer.launch({
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        })
         const page = await browser.newPage()
 
         console.log(`Browser launched.`)
@@ -57,7 +61,9 @@ async function start() {
                 console.log(`Invalid proof URL for Twitter: "${proofUrl}".`)
                 return false
             }
-            console.log(`Processing connection "${anotherAccount}" <=> "${twitterAccount}" with proof: ${proofUrl}`)
+            console.log(
+                `Processing connection "${anotherAccount}" <=> "${twitterAccount}" with proof: ${proofUrl}`
+            )
 
             await page.goto(proofUrl, { waitUntil: 'networkidle2', timeout: 60000 })
             let title = await page.title()
@@ -76,20 +82,25 @@ async function start() {
                 console.log(`Invalid proof URL for Twitter: "${proofUrl}".`)
                 return false
             }
-            console.log(`Processing connection "${anotherAccount}" <=> "${gitHubAccount}" with proof: ${proofUrl}`)
+            console.log(
+                `Processing connection "${anotherAccount}" <=> "${gitHubAccount}" with proof: ${proofUrl}`
+            )
 
             await page.goto(proofUrl, { waitUntil: 'networkidle2', timeout: 60000 })
             let title = await page.title()
             title = title.toLowerCase()
             console.log(`Downloaded page "${title}".`)
 
-            return title.indexOf(username.toLowerCase()) !== -1 && title.indexOf(anotherUsername.toLowerCase()) !== -1
+            return (
+                title.indexOf(username.toLowerCase()) !== -1 &&
+                title.indexOf(anotherUsername.toLowerCase()) !== -1
+            )
         }
 
         const verifyNear = (verificationPackage) => {
             const [nearAccount, _, __, transactionSender] = verificationPackage
             return nearAccount === transactionSender
-        };
+        }
 
         const verify = {
             twitter: verifyTwitter,
@@ -101,7 +112,9 @@ async function start() {
             try {
                 const requestId = pendingRequests[i]
 
-                console.log(`Verification ${i + 1} of ${pendingRequests.length} request. ID: ${requestId}`)
+                console.log(
+                    `Verification ${i + 1} of ${pendingRequests.length} request. ID: ${requestId}`
+                )
                 const request = await contract.getVerificationRequest({ id: requestId })
 
                 const {
@@ -109,28 +122,28 @@ async function start() {
                     secondAccount,
                     firstProofUrl,
                     secondProofUrl,
-                    transactionSender
-                } = request;
+                    transactionSender,
+                } = request
 
                 const account_1 = firstAccount.toLowerCase()
                 const account_2 = secondAccount.toLowerCase()
                 const sender = transactionSender.toLowerCase()
 
                 const verificationPackages = [
-                  [account_1, firstProofUrl, account_2, sender],
-                  [account_2, secondProofUrl, account_1, sender]
+                    [account_1, firstProofUrl, account_2, sender],
+                    [account_2, secondProofUrl, account_1, sender],
                 ]
 
-                let verifications = 0;
+                let verifications = 0
                 for (const verificationPackage of verificationPackages) {
                     const [_, origin] = verificationPackage[0].split('/')
                     if (!Object.prototype.hasOwnProperty.call(verify, origin)) {
                         console.log(`Unsupported social network: "${socialNetwork}".`)
-                        break;
+                        break
                     }
                     let isVerified = verify[origin](verificationPackage)
                     if (isVerified instanceof Promise) {
-                      isVerified = await isVerified
+                        isVerified = await isVerified
                     }
                     if (isVerified) verifications++
                 }
@@ -150,15 +163,15 @@ async function start() {
         await browser.close()
     }
 
-    verifyContract(process.env.CONTRACT_ACCOUNT_ID)
-    verifyContract(process.env.NEW_CONTRACT_ACCOUNT_ID)
+    await verifyContract(process.env.CONTRACT_ACCOUNT_ID)
+    await verifyContract(process.env.NEW_CONTRACT_ACCOUNT_ID)
 }
 
 start()
     .then(() => {
         process.exit()
     })
-    .catch(e => {
+    .catch((e) => {
         console.error(e)
         process.exit()
     })
