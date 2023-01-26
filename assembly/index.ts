@@ -346,8 +346,6 @@ export function approveRequest(requestId: u32): void {
         _statuses.set(secondAccount, new AccountState());
       }
     }
-
-    logging.log("Accounts " + firstAccount + " and " + secondAccount + " are unlinked");
   } else {
     const connected1Accounts = _connectedAccounts.get(firstAccount);
     if (!connected1Accounts) {
@@ -399,13 +397,19 @@ export function approveRequest(requestId: u32): void {
         _statuses.set(mainConnectedAccounts[i], new AccountState());
       }
     }
-
-    logging.log("Accounts " + firstAccount + " and " + secondAccount + " are linked");
   }
-
+  logging.log(
+    "Accounts " +
+      firstAccount +
+      " and " +
+      secondAccount +
+      " are " +
+      (req.isUnlink ? "unlinked" : "linked")
+  );
   pendingRequests.delete(requestId);
+  logging.log("Pending request is deleted");
   approvedRequests.add(requestId);
-  logging.log(`Approving done`);
+  logging.log("The request is added to approved");
 }
 
 export function rejectRequest(requestId: u32): void {
