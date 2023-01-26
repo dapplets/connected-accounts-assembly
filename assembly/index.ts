@@ -61,8 +61,15 @@ const approvedRequests = new PersistentSet<u32>("j");
 
 // INITIALIZATION
 
-export function initialize(ownerAccountId: NearAccountId, oracleAccountId: NearAccountId, minStakeAmount: u128): void {
-  assert(storage.getPrimitive<bool>(INIT_CONTRACT_KEY, false) == false, "Contract already initialized");
+export function initialize(
+  ownerAccountId: NearAccountId,
+  oracleAccountId: NearAccountId,
+  minStakeAmount: u128
+): void {
+  assert(
+    storage.getPrimitive<bool>(INIT_CONTRACT_KEY, false) == false,
+    "Contract already initialized"
+  );
 
   storage.set<NearAccountId>(OWNER_ACCOUNT_KEY, ownerAccountId);
   storage.set<NearAccountId>(ORACLE_ACCOUNT_KEY, oracleAccountId);
@@ -156,7 +163,11 @@ function _getAccountsDeep(
   return accounts;
 }
 
-export function getConnectedAccounts(accountId: string, originId: string, closeness: i8 = -1): Account[][] | null {
+export function getConnectedAccounts(
+  accountId: string,
+  originId: string,
+  closeness: i8 = -1
+): Account[][] | null {
   _active();
   const accountGlobalId = accountId + "/" + originId;
   if (closeness === 1) {
@@ -373,7 +384,9 @@ export function approveRequest(requestId: u32): void {
         connectedAccountsPlain.push(connectedAccounts[i][k]);
       }
     }
-    connectedAccountsPlain.push(new Account(firstAccount, new AccountState(_getStatus(firstAccount))));
+    connectedAccountsPlain.push(
+      new Account(firstAccount, new AccountState(_getStatus(firstAccount)))
+    );
 
     let mainConnectedAccounts: AccountGlobalId[] = [];
     for (let i = 0; i < connectedAccountsPlain.length; i++) {
@@ -434,7 +447,7 @@ export function unlinkAll(): void {
 }
 
 export function verifyWallet(walletProof: WalletProof, id: u32, accountId: string): void {
-  assert(Context.prepaidGas >= 40 * TGAS, "Please attach at least 40 Tgas");
+  assert(Context.prepaidGas >= 80 * TGAS, "Please attach at least 40 Tgas");
   const promise: ContractPromise = ContractPromise.create(
     // hello_address,
     decentralizedOracleAddress,
@@ -449,7 +462,7 @@ export function verifyWallet(walletProof: WalletProof, id: u32, accountId: strin
     Context.contractName,
     "verifyWalletCallback",
     args.encode(),
-    20 * TGAS,
+    60 * TGAS,
     NO_DEPOSIT
   );
 
@@ -497,7 +510,7 @@ export function requestVerification(
       "Insufficient stake amount"
     );
   } else {
-    assert(Context.prepaidGas >= 60 * TGAS, "Please attach at least 60 Tgas");
+    assert(Context.prepaidGas >= 100 * TGAS, "Please attach at least 60 Tgas");
   }
 
   const senderAccount = Context.sender + "/" + senderOrigin;
@@ -514,7 +527,10 @@ export function requestVerification(
       (first == firstAccountGlobalId && second == secondAccountGlobalId) ||
       (first == secondAccountGlobalId && second == firstAccountGlobalId)
     ) {
-      assert(isUnlink && !isNull(signature), "There is a pending request with the same two accounts. Try again later.");
+      assert(
+        isUnlink && !isNull(signature),
+        "There is a pending request with the same two accounts. Try again later."
+      );
       assert(
         (senderAccount == firstAccountGlobalId || senderAccount == secondAccountGlobalId) &&
           (senderAccount == first || senderAccount == second),
@@ -598,22 +614,28 @@ export function requestVerification(
   } else {
     let walletProof: WalletProof;
     if (firstOriginId == senderOrigin) {
-      assert(Context.sender == firstAccountId, "You must sign the request with the NEAR wallet you are linking.");
+      assert(
+        Context.sender == firstAccountId,
+        "You must sign the request with the NEAR wallet you are linking."
+      );
       walletProof = new WalletProof(
         new LinkingAccounts(
           new LinkingAccount(firstOriginId, firstAccountId),
           new LinkingAccount(secondOriginId, secondAccountId),
-          statement!
+          statement
         ),
         signature!
       );
     } else {
-      assert(Context.sender == secondAccountId, "You must sign the request with the NEAR wallet you are linking.");
+      assert(
+        Context.sender == secondAccountId,
+        "You must sign the request with the NEAR wallet you are linking."
+      );
       walletProof = new WalletProof(
         new LinkingAccounts(
           new LinkingAccount(secondOriginId, secondAccountId),
           new LinkingAccount(firstOriginId, firstAccountId),
-          statement!
+          statement
         ),
         signature!
       );
@@ -630,13 +652,17 @@ export function requestVerification(
 
 function _onlyOracle(): void {
   assert(
-    storage.get<NearAccountId>(ORACLE_ACCOUNT_KEY) == Context.sender || Context.predecessor == Context.contractName,
+    storage.get<NearAccountId>(ORACLE_ACCOUNT_KEY) == Context.sender ||
+      Context.predecessor == Context.contractName,
     "Only oracle account can write"
   );
 }
 
 function _onlyOwner(): void {
-  assert(storage.get<NearAccountId>(OWNER_ACCOUNT_KEY) == Context.sender, "Only owner account can write");
+  assert(
+    storage.get<NearAccountId>(OWNER_ACCOUNT_KEY) == Context.sender,
+    "Only owner account can write"
+  );
 }
 
 function _active(): void {
