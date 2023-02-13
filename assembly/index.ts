@@ -450,14 +450,13 @@ export function unlinkAll(): void {
   _statuses.clear();
 }
 
-export function verifyWallet(walletProof: WalletProof, id: u32, accountId: string): void {
-  assert(Context.prepaidGas >= 80 * TGAS, "Please attach at least 40 Tgas");
+function verifyWallet(walletProof: WalletProof, id: u32, accountId: string): void {
+  assert(Context.prepaidGas >= 250 * TGAS, "Please attach at least 250 Tgas");
   const promise: ContractPromise = ContractPromise.create(
-    // hello_address,
     decentralizedOracleAddress,
     "eth_verify_eip712",
     walletProof.encode(),
-    10 * TGAS,
+    30 * TGAS,
     NO_DEPOSIT
   );
 
@@ -466,7 +465,7 @@ export function verifyWallet(walletProof: WalletProof, id: u32, accountId: strin
     Context.contractName,
     "verifyWalletCallback",
     args.encode(),
-    60 * TGAS,
+    200 * TGAS,
     NO_DEPOSIT
   );
 
@@ -514,7 +513,7 @@ export function requestVerification(
       "Insufficient stake amount"
     );
   } else {
-    assert(Context.prepaidGas >= 100 * TGAS, "Please attach at least 60 Tgas");
+    assert(Context.prepaidGas == 300 * TGAS, "Please attach 300 Tgas");
   }
 
   const senderAccount = Context.sender + "/" + senderOrigin;
@@ -545,7 +544,6 @@ export function requestVerification(
       return -1;
     }
   }
-  //
 
   if (!_statuses.contains(firstAccountGlobalId)) {
     _statuses.set(firstAccountGlobalId, new AccountState());
