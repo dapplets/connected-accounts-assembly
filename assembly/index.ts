@@ -41,7 +41,6 @@ type NearAccountId = string; //  example: user.near, user.testnet
 // Common
 const OWNER_ACCOUNT_KEY = "a";
 const INIT_CONTRACT_KEY = "b";
-const ACTIVE_CONTRACT_KEY = "c";
 
 // Identity
 
@@ -74,7 +73,6 @@ export function initialize(
   storage.set<NearAccountId>(ORACLE_ACCOUNT_KEY, oracleAccountId);
   storage.set<u128>(MIN_STAKE_AMOUNT_KEY, minStakeAmount);
   storage.set<bool>(INIT_CONTRACT_KEY, true);
-  storage.set<bool>(ACTIVE_CONTRACT_KEY, true);
 
   logging.log(
     "Init contract with owner: " +
@@ -667,5 +665,5 @@ function _onlyOwner(): void {
 }
 
 function _active(): void {
-  assert(storage.getPrimitive<bool>(ACTIVE_CONTRACT_KEY, false) == true, "Contract inactive");
+  assert(storage.getPrimitive<bool>(INIT_CONTRACT_KEY, false) == true, "Contract inactive");
 }
