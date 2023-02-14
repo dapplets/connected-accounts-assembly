@@ -1,5 +1,4 @@
 import { context, ContractPromise, ContractPromiseResult, u128 } from "near-sdk-as";
-import { WalletProof } from "./modules";
 
 // Constants
 export const TGAS: u64 = 1000000000000;
@@ -20,7 +19,7 @@ export function get_callback_result(): ContractPromiseResult {
 }
 
 @nearBindgen
-export class GreetingCallbackArgs {
+export class VerifyWalletCallbackArgs {
   constructor(public id: u32, public accountId: string) {}
 }
 

@@ -25,8 +25,7 @@ import {
   XCC_SUCCESS,
   TGAS,
   NO_DEPOSIT,
-  // GreetingArgs,
-  GreetingCallbackArgs,
+  VerifyWalletCallbackArgs,
   EcrecoverOutput,
 } from "./external";
 
@@ -460,7 +459,7 @@ function verifyWallet(walletProof: WalletProof, id: u32, accountId: string): voi
     NO_DEPOSIT
   );
 
-  const args: GreetingCallbackArgs = new GreetingCallbackArgs(id, accountId);
+  const args: VerifyWalletCallbackArgs = new VerifyWalletCallbackArgs(id, accountId);
   const callbackPromise = promise.then(
     Context.contractName,
     "verifyWalletCallback",
