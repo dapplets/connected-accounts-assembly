@@ -3,7 +3,6 @@ import { connect, keyStores, KeyPair } from 'near-api-js'
 export const getAccount = async (
   privateKey,
   oracleAccountId,
-  networkType,
   networkId,
   nodeUrl,
   walletUrl,
@@ -12,7 +11,7 @@ export const getAccount = async (
 ) => {
   const keyStore = new keyStores.InMemoryKeyStore()
   const keyPair = KeyPair.fromString(privateKey)
-  await keyStore.setKey(networkType, oracleAccountId, keyPair)
+  await keyStore.setKey(networkId, oracleAccountId, keyPair)
 
   const config = {
       keyStore,
