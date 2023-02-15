@@ -301,30 +301,18 @@ export function changeStatus(accountId: string, originId: string, isMain: bool):
 }
 
 export function approveRequest(requestId: u32): void {
-  logging.log(`Trying to approve`);
   _active();
-  _onlyOracle();
-  assert(verificationRequests.containsIndex(requestId), "Non-existent request ID");
+  _onlyOracleOrItself();
   assert(pendingRequests.has(requestId), "The request has already been processed");
   const req = verificationRequests[requestId];
   const firstAccount = req.firstAccount;
   const secondAccount = req.secondAccount;
 
   if (req.isUnlink) {
-    assert(_connectedAccounts.contains(firstAccount), "Account " + firstAccount + " not found.");
     const connected1Accounts = _connectedAccounts.get(firstAccount);
-    assert(
-      connected1Accounts!.has(secondAccount),
-      "Account " + secondAccount + " is not directly connected to " + firstAccount
-    );
     connected1Accounts!.delete(secondAccount);
 
-    assert(_connectedAccounts.contains(secondAccount), "Account " + secondAccount + " not found.");
     const connected2Accounts = _connectedAccounts.get(secondAccount);
-    assert(
-      connected2Accounts!.has(firstAccount),
-      "Account " + firstAccount + " is not directly connected to " + secondAccount
-    );
     connected2Accounts!.delete(firstAccount);
 
     _connectedAccounts.set(firstAccount, connected1Accounts!);
@@ -350,10 +338,6 @@ export function approveRequest(requestId: u32): void {
       newConnected1Accounts.add(secondAccount);
       _connectedAccounts.set(firstAccount, newConnected1Accounts);
     } else {
-      assert(
-        !connected1Accounts.has(secondAccount),
-        "Account " + secondAccount + " has already connected to " + firstAccount
-      );
       connected1Accounts.add(secondAccount);
       _connectedAccounts.set(firstAccount, connected1Accounts);
     }
@@ -364,10 +348,6 @@ export function approveRequest(requestId: u32): void {
       newConnected2Accounts.add(firstAccount);
       _connectedAccounts.set(secondAccount, newConnected2Accounts);
     } else {
-      assert(
-        !connected2Accounts.has(firstAccount),
-        "Account " + firstAccount + " has already connected to " + secondAccount
-      );
       connected2Accounts.add(firstAccount);
       _connectedAccounts.set(secondAccount, connected2Accounts);
     }
@@ -395,6 +375,8 @@ export function approveRequest(requestId: u32): void {
       }
     }
   }
+  pendingRequests.delete(requestId);
+  approvedRequests.add(requestId);
   logging.log(
     "Accounts " +
       firstAccount +
@@ -403,17 +385,11 @@ export function approveRequest(requestId: u32): void {
       " are " +
       (req.isUnlink ? "unlinked" : "linked")
   );
-  pendingRequests.delete(requestId);
-  logging.log("Pending request is deleted");
-  approvedRequests.add(requestId);
-  logging.log("The request is added to approved");
 }
 
 export function rejectRequest(requestId: u32): void {
-  logging.log(`Trying to reject`);
   _active();
-  _onlyOracle();
-  assert(verificationRequests.containsIndex(requestId), "Non-existent request ID");
+  _onlyOracleOrItself();
   assert(pendingRequests.has(requestId), "The request has already been processed");
   pendingRequests.delete(requestId);
   logging.log(`Reject done`);
@@ -649,7 +625,7 @@ export function requestVerification(
 
 // HELPERS
 
-function _onlyOracle(): void {
+function _onlyOracleOrItself(): void {
   assert(
     storage.get<NearAccountId>(ORACLE_ACCOUNT_KEY) == Context.sender ||
       Context.predecessor == Context.contractName,
