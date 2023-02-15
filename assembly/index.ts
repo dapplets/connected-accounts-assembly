@@ -416,13 +416,6 @@ export function changeMinStake(minStakeAmount: u128): void {
   logging.log("Changed min stake: " + minStakeAmount.toString());
 }
 
-export function unlinkAll(): void {
-  _active();
-  _onlyOwner();
-  _connectedAccounts.clear();
-  _statuses.clear();
-}
-
 function verifyWallet(walletProof: WalletProof, id: u32, accountId: string): void {
   assert(Context.prepaidGas >= 250 * TGAS, "Please attach at least 250 Tgas");
   const promise: ContractPromise = ContractPromise.create(
