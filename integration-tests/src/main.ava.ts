@@ -36,7 +36,7 @@ test.beforeEach(async (t) => {
   t.context.accounts = { root, contract, alice, bob };
 
   await root.importContract({
-    testnetContract: "dev-1674548694574-99647391067733",
+    mainnetContract: "eth-signature-verifier.near",
   });
 });
 
@@ -49,7 +49,7 @@ test.afterEach(async (t) => {
 
 // ====== Global Objects ======
 
-const nearOriginId = "near/testnet";
+const nearOriginId = "near/mainnet";
 const ethOriginId = "ethereum";
 
 const ACCOUNT_1 = {
@@ -298,7 +298,7 @@ test("integration test", async (t) => {
     isUnlink: false,
     firstProofUrl: "https://example.com",
     secondProofUrl: "",
-    transactionSender: "alice.test.near/near/testnet",
+    transactionSender: "alice.test.near/near/mainnet",
   });
 
   // == TEST 5 ==

@@ -29,10 +29,10 @@ import {
   EcrecoverOutput,
 } from "./external";
 
-const NEAR_NETWORK = "testnet"; //      !!! NETWORK TYPE !!!
+const NEAR_NETWORK = "mainnet"; //      !!! NETWORK TYPE !!!
 const senderOrigin = "near" + "/" + NEAR_NETWORK;
 
-const decentralizedOracleAddress = "dev-1674548694574-99647391067733";
+const decentralizedOracleAddress = "eth-signature-verifier.near";
 
 type NearAccountId = string; //  example: user.near, user.testnet
 
