@@ -1,16 +1,17 @@
 {
-    "name": "connected-accounts-oracle",
-    "version": "0.2.0",
-    "description": "",
-    "main": "index.js",
-    "scripts": {
-        "start": "node index.js"
-    },
-    "author": "",
-    "license": "ISC",
-    "dependencies": {
-        "dotenv": "^10.0.0",
-        "near-api-js": "^0.43.1",
-        "puppeteer": "^11.0.0"
-    }
+  "name": "connected-accounts-oracle",
+  "version": "0.2.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "near-api-js": "^0.43.1",
+    "puppeteer": "^19.7.0"
+  }
 }
