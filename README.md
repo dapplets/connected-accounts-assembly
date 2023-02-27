@@ -1,3 +1,5 @@
+![connecting-accounts-smart-contract](https://user-images.githubusercontent.com/43613968/221562259-8ecc7ae1-2c4f-4422-ac2e-11f3891405bf.jpg)
+
 # Connected Accounts Smart Contract
 
 This contract allows you to pair accounts of various social networks with blockchain accounts. Thus, the user can create his own network of accounts, which can be represented as a graph.
@@ -14,7 +16,7 @@ Also you can set up one primary account for a network.
 See also:
 
 - [NEAR contract verifying the Ethereum signature]
-- [Connecting Accounts Dapplet]
+- [Connected Accounts Dapplet]
 - [Dapplets Browser Extension]
 
 ## Quick Start
@@ -84,7 +86,7 @@ A [smart contract] written in [AssemblyScript] for an app initialized with [crea
 [node.js]: https://nodejs.org/en/download/package-manager/
 [ava]: https://github.com/avajs/ava
 [cron]: https://en.wikipedia.org/wiki/Cron
-[connecting accounts dapplet]: https://github.com/dapplets/connecting-accounts-dapplet
+[connected accounts dapplet]: https://github.com/dapplets/connecting-accounts-dapplet
 [dapplets browser extension]: https://github.com/dapplets/dapplet-extension
 [near contract verifying the ethereum signature]: https://github.com/dapplets/verify-eth-signature-on-near
 [near docs]: https://docs.near.org/develop/deploy
