@@ -1,4 +1,4 @@
-![connecting-accounts-smart-contract](https://user-images.githubusercontent.com/43613968/221562259-8ecc7ae1-2c4f-4422-ac2e-11f3891405bf.jpg)
+<img width="1245" alt="connecting-accounts-smart-contract" src="https://user-images.githubusercontent.com/43613968/225054839-7ebf5656-81f0-45df-a121-c54a67a2dfda.png">
 
 # Connected Accounts Smart Contract
 
