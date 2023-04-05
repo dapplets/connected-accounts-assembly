@@ -88,6 +88,53 @@ export function initialize(
 
 // Identity
 
+export function areConnected(accountGId1: string, accountGId2: string): bool {
+  assert(accountGId1 !== accountGId2, "Accounts shouldn't be equal");
+  const connectedIds = _connectedAccounts.get(accountGId1);
+  if (!connectedIds) return false;
+  if (connectedIds.has(accountGId2)) return true;
+  const result = new Set<string>();
+  result.add(accountGId1);
+  const stack = connectedIds.values();
+  while (stack.length) {
+    const account = stack.pop();
+    const connectionsSet = _connectedAccounts.get(account);
+    if (connectionsSet) {
+      if (connectionsSet.has(accountGId2)) return true;
+      const connectionsArr = connectionsSet.values();
+      for (let i = 0; i < connectionsArr.length; i++) {
+        if (!result.has(connectionsArr[i]) && !stack.includes(connectionsArr[i])) {
+          stack.push(connectionsArr[i]);
+        }
+      }
+    }
+    result.add(account);
+  }
+  return result.has(accountGId2);
+}
+
+export function getNet(accountGId: string): Set<string> | null {
+  const connectedIds = _connectedAccounts.get(accountGId);
+  if (!connectedIds) return null;
+  const result = new Set<string>();
+  result.add(accountGId);
+  const stack = connectedIds.values();
+  while (stack.length) {
+    const account = stack.pop();
+    const connectionsSet = _connectedAccounts.get(account);
+    if (connectionsSet) {
+      const connectionsArr = connectionsSet.values();
+      for (let i = 0; i < connectionsArr.length; i++) {
+        if (!result.has(connectionsArr[i]) && !stack.includes(connectionsArr[i])) {
+          stack.push(connectionsArr[i]);
+        }
+      }
+    }
+    result.add(account);
+  }
+  return result;
+}
+
 function _getStatus(id: AccountGlobalId): bool {
   if (_statuses.contains(id)) {
     const res = _statuses.get(id);

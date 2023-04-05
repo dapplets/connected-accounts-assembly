@@ -77,6 +77,11 @@ const ACCOUNT_5 = {
   originId: "social_network",
 };
 
+const ACCOUNT_6 = {
+  id: "username-6",
+  originId: "social_network-6",
+};
+
 // ======= TESTS =======
 
 test("integration test", async (t) => {
@@ -243,6 +248,17 @@ test("integration test", async (t) => {
       id,
     });
 
+  const areConnected = (accountGId1: string, accountGId2: string): Promise<boolean> =>
+    contract.view("areConnected", {
+      accountGId1,
+      accountGId2,
+    });
+
+  const getNet = (accountGId: string): Promise<string[] | null> =>
+    contract.view("getNet", {
+      accountGId,
+    });
+
   // ============ CONSTANTS ===========
 
   const gAliceID = alice.accountId + "/" + nearOriginId;
@@ -252,6 +268,7 @@ test("integration test", async (t) => {
   const gAcc_3ID = ACCOUNT_3.id + "/" + ACCOUNT_3.originId;
   const gAcc_4ID = ACCOUNT_4.id + "/" + ACCOUNT_4.originId;
   const gAcc_5ID = ACCOUNT_5.id + "/" + ACCOUNT_5.originId;
+  const gAcc_6ID = ACCOUNT_6.id + "/" + ACCOUNT_6.originId;
 
   // ==================================
 
@@ -1317,4 +1334,72 @@ test("integration test", async (t) => {
       },
     ],
   ]);
+
+  // == TEST 19 ==
+  console.log("== TEST 19 ==: areConnected() returns boolean");
+  // =============
+
+  const closeness_19_1 = await areConnected(gAliceID, gAcc_5ID);
+  const closeness_19_2 = await areConnected(gEthID, gAcc_1ID);
+  const closeness_19_3 = await areConnected(gBobID, gAcc_4ID);
+
+  t.is(closeness_19_1, true);
+  t.is(closeness_19_2, true);
+  t.is(closeness_19_3, true);
+
+  const requestId_19_1 = await aliceRequestVerification(
+    bob.accountId,
+    nearOriginId,
+    ACCOUNT_4.id,
+    ACCOUNT_4.originId,
+    null,
+    true
+  );
+
+  await aliceApproveRequest(requestId_19_1);
+
+  const requestId_19_2 = await aliceRequestVerification(
+    alice.accountId,
+    nearOriginId,
+    ACCOUNT_5.id,
+    ACCOUNT_5.originId,
+    null,
+    false
+  );
+
+  await aliceApproveRequest(requestId_19_2);
+
+  const closeness_19_4 = await areConnected(gBobID, gAcc_4ID);
+  t.is(closeness_19_4, false);
+
+  const closeness_19_5 = await areConnected(gAcc_1ID, gAcc_5ID);
+  t.is(closeness_19_5, true);
+
+  const closeness_19_6 = await areConnected(gEthID, gAcc_5ID);
+  t.is(closeness_19_6, true);
+
+  const closeness_19_7 = await areConnected(gAcc_4ID, gAcc_2ID);
+  t.is(closeness_19_7, false);
+
+  const closeness_19_8 = await areConnected(gAliceID, gAcc_4ID);
+  t.is(closeness_19_8, false);
+
+  const closeness_19_9 = await areConnected(gAliceID, gAcc_1ID);
+  t.is(closeness_19_9, true);
+
+  // == TEST 20 ==
+  console.log("== TEST 20 ==: getNet() returns connected accounts plain net");
+  // =============
+
+  const net_20_1 = await getNet(gAliceID);
+  const net_20_2 = await getNet(gAcc_4ID);
+  const net_20_3 = await getNet(gAcc_6ID);
+
+  console.log("*** net_20_1", net_20_1);
+  console.log("*** net_20_2", net_20_2);
+  console.log("*** net_20_3", net_20_3);
+
+  t.deepEqual(net_20_1, [gAliceID, gAcc_5ID, gAcc_3ID, gBobID, gEthID, gAcc_2ID, gAcc_1ID]);
+  t.deepEqual(net_20_2, [gAcc_4ID]);
+  t.is(net_20_3, null);
 });
