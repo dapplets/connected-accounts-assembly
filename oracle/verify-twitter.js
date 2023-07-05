@@ -20,6 +20,11 @@ export const verifyTwitter = async (verificationPackage) => {
   })
   const page = await browser.newPage()
 
+  if (process.env.TWITTER_COOKIES) {
+    const deserializedCookies = JSON.parse(process.env.TWITTER_COOKIES);
+    await page.setCookie(...deserializedCookies);
+  }
+
   console.log(`Browser launched.`)
 
   await page.goto(proofUrl, { waitUntil: 'networkidle2', timeout: 60000 })
