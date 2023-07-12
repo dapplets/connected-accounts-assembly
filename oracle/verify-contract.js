@@ -83,6 +83,4 @@ export const verifyContract = async (contractAddress, account) => {
           console.error(e)
       }
   }
-
-  await browser.close()
 }
