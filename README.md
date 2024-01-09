@@ -1,5 +1,5 @@
-![connecting-accounts-smart-contract](https://github.com/dapplets/connected-accounts-assembly/blob/31ed706f3257d90b97f270ed05cbfd89fc63ae15/docs/connecting-accounts-smart-contract-light.jpg#gh-light-mode-only)
-![connecting-accounts-smart-contract](https://github.com/dapplets/connected-accounts-assembly/blob/31ed706f3257d90b97f270ed05cbfd89fc63ae15/docs/connecting-accounts-smart-contract.jpg#gh-dark-mode-only)
+![connecting-accounts-smart-contract](/docs/light.png#gh-light-mode-only)
+![connecting-accounts-smart-contract](/docs/dark.png#gh-dark-mode-only)
 
 # Connected Accounts Smart Contract
 
