@@ -1,4 +1,5 @@
-<img width="1245" alt="connecting-accounts-smart-contract" src="https://user-images.githubusercontent.com/43613968/225054839-7ebf5656-81f0-45df-a121-c54a67a2dfda.png">
+![connecting-accounts-smart-contract](/docs/light.png#gh-light-mode-only)
+![connecting-accounts-smart-contract](/docs/dark.png#gh-dark-mode-only)
 
 # Connected Accounts Smart Contract
 
@@ -6,18 +7,18 @@ This contract allows you to pair accounts of various social networks with blockc
 
 Types of links that can be created at the moment:
 
-- NEAR Testnet + Twitter
-- NEAR Testnet + GitHub
-- NEAR Testnet + Ethereum (using MetaMask signature)
-- Twitter + GitHub
+-   NEAR Testnet + Twitter
+-   NEAR Testnet + GitHub
+-   NEAR Testnet + Ethereum (using MetaMask signature)
+-   Twitter + GitHub
 
 Also you can set up one primary account for a network.
 
 See also:
 
-- [NEAR contract verifying the Ethereum signature]
-- [Connected Accounts Dapplet]
-- [Dapplets Browser Extension]
+-   [NEAR contract verifying the Ethereum signature]
+-   [Connected Accounts Dapplet]
+-   [Dapplets Browser Extension]
 
 ## Quick Start
 
@@ -28,45 +29,45 @@ Before you compile this code, you will need to install [Node.js] ≥ 12 and [NEA
 1. The main smart contract code lives in `assembly/index.ts`. You can compile
    it with:
 
-   ```bash
-   npm i
-   npm run build
-   ```
+    ```bash
+    npm i
+    npm run build
+    ```
 
 2. Tests: You can run smart contract tests with:
 
-   ```bash
-   npm run test
-   ```
+    ```bash
+    npm run test
+    ```
 
-   This runs integrational tests using [ava].
+    This runs integrational tests using [ava].
 
 3. Deployment
 
-   Create an Account and Deploy
+    Create an Account and Deploy
 
-   ```bash
-   # Automatically deploy the wasm in a new account
-   near dev-deploy out/main.wasm
-   ```
+    ```bash
+    # Automatically deploy the wasm in a new account
+    near dev-deploy out/main.wasm
+    ```
 
-   Deploy in an Existing Account
+    Deploy in an Existing Account
 
-   ```bash
-   # login into your account
-   near login
+    ```bash
+    # login into your account
+    near login
 
-   # deploy the contract
-   near deploy <accountId> out/main.wasm
-   ```
+    # deploy the contract
+    near deploy <accountId> out/main.wasm
+    ```
 
-   See more in [NEAR Docs].
+    See more in [NEAR Docs].
 
 4. Initialize the contract
 
-   ```bash
-   near call <accountId> initialize '{"ownerAccountId": "<accountId>", "oracleAccountId": "<accountId>", "minStakeAmount": "1000000000000000000000"}' --accountId=<accountId>
-   ```
+    ```bash
+    near call <accountId> initialize '{"ownerAccountId": "<accountId>", "oracleAccountId": "<accountId>", "minStakeAmount": "1000000000000000000000"}' --accountId=<accountId>
+    ```
 
 ## Oracle
 
